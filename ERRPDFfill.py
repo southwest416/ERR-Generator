@@ -3,7 +3,7 @@ import os
 import pdfrw
 import pandas as pd
 
-#PDFRW CONSTANTS
+# PDFRW CONSTANTS
 ANNOT_KEY = '/Annots'
 ANNOT_FIELD_KEY = '/T'
 ANNOT_VAL_KEY = '/V'
@@ -39,8 +39,8 @@ WIDGET_SUBTYPE_KEY = '/Widget'
 #     pdfrw.PdfWriter().write(output_path, template_pdf)
 
 
-#PDFRW FUNCTIONS
-#CREDIT: https://github.com/WestHealth/pdf-form-filler
+# PDFRW FUNCTIONS
+# CREDIT: https://github.com/WestHealth/pdf-form-filler
 def _text_form(annotation, value):
     pdfstr = pdfrw.objects.pdfstring.PdfString.encode(str(value))
     annotation.update(pdfrw.PdfDict(V=pdfstr, AS=pdfstr))
@@ -202,26 +202,71 @@ def single_form_fill(in_file, data, out_file):
     pdfrw.PdfWriter().write(out_file, out_pdf)
 
 
+# PDFRW Concat Function
+# CREDIT: https://www.blog.pythonlibrary.org/2018/06/06/creating-and-manipulating-pdfs-with-pdfrw/
+def concatenate(paths, output):
+    writer = pdfrw.PdfWriter()
+
+    for path in paths:
+        reader = pdfrw.PdfReader(path)
+        writer.addpages(reader.pages)
+
+    writer.write(output)
+
+
 if __name__ == "__main__":
+    # CONSTANTS
     pdf_template = 'CoverLetter+3330-42+3330-43combined.pdf'
     data_spreadsheet_path = '1. Personal Information.xlsx'
-    data_xls = pd.ExcelFile(data_spreadsheet_path, engine="openpyxl")
+    resume_path = 'resume.pdf'
+    performance_path = 'performance.pdf'
+    output_directory = 'Filled ERRs'
 
-    data_backend = data_xls.parse("Backend", header=None, index_col=0, usecols="A,B").fillna('').to_dict()
+    # GENERATES EMPTY DICTS FOR EACH FACILITY
     data_fac1, data_fac2, data_fac3, data_fac4, data_fac5 = ({},) * 5
-    #print(data_backend[1])
 
-    for i in range(1,6):
+    # CREATES EXCELFILE OBJECT TO PARSE BACKEND DATA INTO USABLE DICT
+    data_xls = pd.ExcelFile(data_spreadsheet_path, engine="openpyxl")
+    data_backend = data_xls.parse("Backend", header=None, index_col=0, usecols="A,B").fillna('').to_dict()
+
+    # CREATES OUTPUT DIRECTORY IF NOT EXISTS
+    if not os.path.exists(output_directory):
+        os.mkdir(output_directory)
+
+    # ITERATES THROUGH EACH ERR
+    for i in range(1, 6):
+        # CHECKS IF FACILITY WAS SELECTED, SKIPS IF NOT
         if data_backend[1].get("Facility" + str(i)):
-            data = data_xls.parse("PDFKeys"+str(i), header=None, index_col=0).fillna('').to_dict()
 
-            dir = str(data[1].get("Facility"))
-            if not os.path.exists(dir):
-                os.mkdir(dir)
+            # CREATES DICT FOR FACILITY i CONTAINING ALL PDF KEYS TO FILL
+            data = data_xls.parse("PDFKeys" + str(i), header=None, index_col=0).fillna('').to_dict()
 
-            single_form_fill(pdf_template, data[1], (dir + '\\Cover+3340-42+43.pdf'))
+            # OUTPUT PATH CONSTANTS
+            output_path = output_directory + "\\" + str(data[1].get("Facility")) + "(temp).pdf"
+            final_output_path = output_directory + "\\" + str(data[1].get("Facility")) + ".pdf"
+
+            # RUNS SINGLE FORM FILL WITH PDF KEYS & GENERATES TEMPORARY OUTPUT FILE
+            single_form_fill(pdf_template, data[1], output_path)
+
+            # CREATES LIST OF FILES TO CONCATENATE INTO ONE PACKAGE
+            # IF FILES NOT FOUND, SKIPS
+            concat_paths = [output_path]
+            if os.path.isfile(resume_path):
+                concat_paths.append(resume_path)
+            if os.path.isfile(performance_path):
+                concat_paths.append(performance_path)
+
+            # CHECKS IF PERFORMANCE PLAN OR RESUME IS ATTACHED
+            # IF SO, CONCATENATES INTO ONE PACKAGE
+            # IF FILES NOT FOUND, RENAMES TEMPORARY OUTPUT FILE TO FINAL OUTPUT FILE
+            if concat_paths.__len__() > 1:
+                concatenate(concat_paths, final_output_path)
+                os.remove(output_path)
+            else:
+                if os.path.isfile(final_output_path):
+                    os.remove(final_output_path)
+                os.rename(output_path, final_output_path)
+
             print("Processed: " + str(data[1].get("Facility")))
 
     input("Press enter to exit!")
-
-    # fill_pdf(pdf_template, pdf_output, data_fac1[1])
