@@ -214,6 +214,59 @@ def concatenate(paths, output):
     writer.write(output)
 
 
+# PDFRW Safe Concat Function
+# CREDIT: https://stackoverflow.com/questions/57008782/pypdf2-pdffilemerger-loosing-pdf-module-in-merged-file
+def concatenate_pdfrw(pdf_files, output_filename):
+    output = pdfrw.PdfWriter()
+    num = 0
+    output_acroform = None
+    for pdf in pdf_files:
+        input1 = pdfrw.PdfReader(pdf, verbose=False)
+        output.addpages(input1.pages)
+        if pdfrw.PdfName('AcroForm') in input1[pdfrw.PdfName('Root')].keys():  # Not all PDFs have an AcroForm node
+            source_acroform = input1[pdfrw.PdfName('Root')][pdfrw.PdfName('AcroForm')]
+            if pdfrw.PdfName('Fields') in source_acroform:
+                output_formfields = source_acroform[pdfrw.PdfName('Fields')]
+            else:
+                output_formfields = []
+            num2 = 0
+            for form_field in output_formfields:
+                key = pdfrw.PdfName('T')
+                old_name = form_field[key].replace('(', '').replace(')', '')  # Field names are in the "(name)" format
+                form_field[key] = 'FILE_{n}_FIELD_{m}_{on}'.format(n=num, m=num2, on=old_name)
+                num2 += 1
+            if output_acroform == None:
+                # copy the first AcroForm node
+                output_acroform = source_acroform
+            else:
+                for key in source_acroform.keys():
+                    # Add new AcroForms keys if output_acroform already existing
+                    if key not in output_acroform:
+                        output_acroform[key] = source_acroform[key]
+                # Add missing font entries in /DR node of source file
+                if (pdfrw.PdfName('DR') in source_acroform.keys()) and (
+                        pdfrw.PdfName('Font') in source_acroform[pdfrw.PdfName('DR')].keys()):
+                    if pdfrw.PdfName('Font') not in output_acroform[pdfrw.PdfName('DR')].keys():
+                        # if output_acroform is missing entirely the /Font node under an existing /DR, simply add it
+                        output_acroform[pdfrw.PdfName('DR')][pdfrw.PdfName('Font')] = \
+                        source_acroform[pdfrw.PdfName('DR')][
+                            pdfrw.PdfName('Font')]
+                    else:
+                        # else add new fonts only
+                        for font_key in source_acroform[pdfrw.PdfName('DR')][pdfrw.PdfName('Font')].keys():
+                            if font_key not in output_acroform[pdfrw.PdfName('DR')][pdfrw.PdfName('Font')]:
+                                output_acroform[pdfrw.PdfName('DR')][pdfrw.PdfName('Font')][font_key] = \
+                                    source_acroform[pdfrw.PdfName('DR')][pdfrw.PdfName('Font')][font_key]
+            if pdfrw.PdfName('Fields') not in output_acroform:
+                output_acroform[pdfrw.PdfName('Fields')] = output_formfields
+            else:
+                # Add new fields
+                output_acroform[pdfrw.PdfName('Fields')] += output_formfields
+        num += 1
+    output.trailer[pdfrw.PdfName('Root')][pdfrw.PdfName('AcroForm')] = output_acroform
+    output.write(output_filename)
+
+
 if __name__ == "__main__":
     # CONSTANTS
     pdf_template = 'CoverLetter+3330-42+3330-43combined.pdf'
@@ -260,7 +313,7 @@ if __name__ == "__main__":
             # IF SO, CONCATENATES INTO ONE PACKAGE
             # IF FILES NOT FOUND, RENAMES TEMPORARY OUTPUT FILE TO FINAL OUTPUT FILE
             if concat_paths.__len__() > 1:
-                concatenate(concat_paths, final_output_path)
+                concatenate_pdfrw(concat_paths, final_output_path)
                 os.remove(output_path)
             else:
                 if os.path.isfile(final_output_path):
