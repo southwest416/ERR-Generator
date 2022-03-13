@@ -27,25 +27,36 @@ This program automatically generates ERR packages including a Cover letter, 3330
    
 4. Once complete, save the excel file.
 
-5. Run ERRPDFfill.exe. Windows may warn that this program is an "unrecognized app" since it is not signed by a typical developer. If so, please select "More Info," then click "Run anyway" to execute.
+5. Download your performance plan PDF from the [FAA PMAS website](https://pmas.faa.gov). **Rename to "performance.pdf" and save to ERR Generator directory.**
 
-   - ![Run Program](https://i.imgur.com/XbbFphl.png)
+   - ![FAA PMAS Download as PDF](https://i.imgur.com/2j4kvcQ.png)
+
+   - ![Show PDF](https://i.imgur.com/BMank8z.png)
+
+   - ![Save PDF](https://i.imgur.com/vdlT8cA.png)
+
+   - ![Rename PDF to performance.pdf](https://i.imgur.com/L2ZHHHw.png)
+
+6. Copy your resume **saved as a PDF** to the ERR Generator directory. **Rename to "resume.pdf" if not already saved as such**
+
+   - ![Copy & Save resume as resume.pdf](https://i.imgur.com/Q6lUtEP.gif)
+
+7. Run ERRPDFfill.exe. Windows may warn that this program is an "unrecognized app" since it is not signed by a typical developer. If so, please select "More Info," then click "Run anyway" to execute.
+
+   - ![Run Program](https://i.imgur.com/39lmIvp.png)
    
    - ![Windows Warning](https://i.imgur.com/KtCXrEl.png)
    
    - ![Run Anyway](https://i.imgur.com/oL1XaG2.png)
    
-6. This will generate a folder for each facility selected. You can then view and print the generated documents from Microsoft Edge, Google Chrome, or Adobe Acrobat. Please do not print from Mozilla Firefox as it will not function properly when attempting to print.
+8. This will generate a folder "Filled ERRs". Open this folder to view your completed ERR packages. You can then view and print the generated documents from Microsoft Edge, Google Chrome, or Adobe Acrobat. Please do not print from Mozilla Firefox as it will not function properly when attempting to print.
 
-   - ![Facility Folders](https://i.imgur.com/0FfGanQ.png)
+   - ![Filled ERR Folder](https://i.imgur.com/DQVCULK.png)
 
-7. Review each package THOROUGHLY, especially if your current or desired facility has undergone a change recently such as a change of type, level, etc.
+   - ![Filled ERR Folder 2](https://i.imgur.com/Bi4NlJ4.png)
 
-8. Sign the cover letter, 3330-42 (page 2), and 3330-43-1 (last page), and have a supervisor or manager sign 3330-43-1 under "Signature of Rating Official."
+9. Review each package THOROUGHLY, especially if your current or desired facility has undergone a change recently such as a change of type, level, etc.
 
-9. Attach a resume and the most recent copy of your performance plan from the [FAA PMAS website](https://pmas.faa.gov)
+10. Sign the cover letter, 3330-42 (page 2), and 3330-43-1 (page 5), and have a supervisor or manager sign 3330-43-1 under "Signature of Rating Official."
 
-10. Fax or email to the region generated on the cover letter!
-   
-   
-   
+11. Fax or email to the region generated on the cover letter!
