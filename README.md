@@ -41,22 +41,26 @@ This program automatically generates ERR packages including a Cover letter, 3330
 
    - ![Copy & Save resume as resume.pdf](https://i.imgur.com/Q6lUtEP.gif)
 
-7. Run ERRPDFfill.exe. Windows may warn that this program is an "unrecognized app" since it is not signed by a typical developer. If so, please select "More Info," then click "Run anyway" to execute.
+7. Add an image of your signature, and with permission, a supervisors signature, to the main directory. These files may be of type png or jpg. **Rename the respective files to "signature.png"/"signature.jpg" and "supsignature.png"/"supsignature.jpg"** _NOTE: ADDING SOMEONE ELSE'S SIGNATURE ON A DOCUMENT WITHOUT THEIR KNOWLEDGE MAY BE A VIOLATION OF POLICY, REGULATION, AND/OR LAW. ONLY ATTACH A SUPERVISOR'S SIGNATURE WITH THEIR EXPRESS PERMISSION. THE CREATOR OF THIS PROGRAM ASSUMES NO LIABILITY FOR MISUSE OF THIS FUNCTION_
 
-   - ![Run Program](https://i.imgur.com/39lmIvp.png)
+   - ![Attach Signature Files](https://i.imgur.com/ROEhHeH.png)
+
+8. Run ERRPDFfill.exe. Windows may warn that this program is an "unrecognized app" since it is not signed by a typical developer. If so, please select "More Info," then click "Run anyway" to execute.
+
+   - ![Run Program](https://i.imgur.com/abknnhd.png)
    
    - ![Windows Warning](https://i.imgur.com/KtCXrEl.png)
    
    - ![Run Anyway](https://i.imgur.com/oL1XaG2.png)
    
-8. This will generate a folder "Filled ERRs". Open this folder to view your completed ERR packages. You can then view and print the generated documents from Microsoft Edge, Google Chrome, or Adobe Acrobat. Please do not print from Mozilla Firefox as it will not function properly when attempting to print.
+9. This will generate a folder "Filled ERRs". Open this folder to view your completed ERR packages. You can then view and print the generated documents from Microsoft Edge, Google Chrome, or Adobe Acrobat. Please do not print from Mozilla Firefox as it will not function properly when attempting to print.
 
-   - ![Filled ERR Folder](https://i.imgur.com/DQVCULK.png)
+   - ![Filled ERR Folder](https://i.imgur.com/ZFX8umA.png)
 
    - ![Filled ERR Folder 2](https://i.imgur.com/Bi4NlJ4.png)
 
-9. Review each package THOROUGHLY, especially if your current or desired facility has undergone a change recently such as a change of type, level, etc.
+10. Review each package THOROUGHLY, especially if your current or desired facility has undergone a change recently such as a change of type, level, etc.
 
-10. Sign the cover letter, 3330-42 (page 2), and 3330-43-1 (page 5), and have a supervisor or manager sign 3330-43-1 under "Signature of Rating Official."
+11. Sign the cover letter, 3330-42 (page 2), and 3330-43-1 (page 5), and have a supervisor or manager sign 3330-43-1 under "Signature of Rating Official."
 
-11. Fax or email to the region generated on the cover letter!
+12. Fax or email to the region generated on the cover letter!
