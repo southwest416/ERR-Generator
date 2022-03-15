@@ -274,6 +274,8 @@ def get_sup_signature():
     return ''
 
 
+# Creates signature watermark PDFs to overlay before generating & signing packages
+# CREDIT: https://stackoverflow.com/questions/2925484/place-image-over-pdf
 def init_signatures(signature_path, sup_signature_path):
     # CONSTANTS & INITIALIZATIONS
     WATERMARK_FILE_COVER_LETTER = RESOURCE_DIRECTORY + '\\coverwatermark.pdf'
@@ -306,6 +308,8 @@ def init_signatures(signature_path, sup_signature_path):
             canvas_43.save()
 
 
+# Overlays signature watermarks onto filled packages
+# CREDIT: https://stackoverflow.com/questions/2925484/place-image-over-pdf
 def draw_signatures(form_path, output_path):
     # CONSTANTS & INITIALIZATIONS
     WATERMARK_FILE_COVER_LETTER = RESOURCE_DIRECTORY + '\\coverwatermark.pdf'
