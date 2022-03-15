@@ -2,6 +2,10 @@ import os
 
 import pdfrw
 import pandas as pd
+import reportlab.lib.pagesizes
+from reportlab.pdfgen import canvas
+from PyPDF2 import PdfFileWriter, PdfFileReader
+from PyPDF2.generic import BooleanObject, NameObject, IndirectObject
 
 # PDFRW CONSTANTS
 ANNOT_KEY = '/Annots'
@@ -11,32 +15,9 @@ ANNOT_RECT_KEY = '/Rect'
 SUBTYPE_KEY = '/Subtype'
 WIDGET_SUBTYPE_KEY = '/Widget'
 
-
-# def fill_pdf(input_path, output_path, data_dict):
-#     template_pdf = pdfrw.PdfReader(input_path)
-#     for page in template_pdf.pages:
-#         annotations = page[ANNOT_KEY]
-#         if annotations is not None:
-#             for annotation in annotations:
-#                 if annotation[SUBTYPE_KEY] == WIDGET_SUBTYPE_KEY:
-#                     if not annotation[ANNOT_FIELD_KEY]:
-#                         annotation=annotation['/Parent']
-#                     if annotation[ANNOT_FIELD_KEY]:
-#                         key = annotation[ANNOT_FIELD_KEY].to_unicode()
-#                         if key in data_dict.keys():
-#                             if type(data_dict[key]) == bool:
-#                                 if data_dict[key] == True:
-#                                     annotation.update(pdfrw.PdfDict(V=pdfrw.objects.pdfname.BasePdfName('/Yes')))
-#                                     annotation.update(pdfrw.PdfDict(AS=pdfrw.PdfName('Yes')))
-#                             else:
-#                                 print(pdfrw.PdfString.encode(str(data_dict[key])))
-#                                 annotation.update(
-#                                     pdfrw.PdfDict(V='{}'.format(data_dict[key]))
-#                                     #pdfrw.PdfDict(V=pdfrw.PdfString.encode(str(data_dict[key])))
-#                                 )
-#                                 annotation.update(pdfrw.PdfDict(AP=''))
-#     template_pdf.Root.AcroForm.update(pdfrw.PdfDict(NeedAppearances=pdfrw.PdfObject('true')))
-#     pdfrw.PdfWriter().write(output_path, template_pdf)
+# GLOBAL CONSTANTS
+OUTPUT_DIRECTORY = 'Filled ERRs'
+RESOURCE_DIRECTORY = 'resources'
 
 
 # PDFRW FUNCTIONS
@@ -202,18 +183,6 @@ def single_form_fill(in_file, data, out_file):
     pdfrw.PdfWriter().write(out_file, out_pdf)
 
 
-# PDFRW Concat Function
-# CREDIT: https://www.blog.pythonlibrary.org/2018/06/06/creating-and-manipulating-pdfs-with-pdfrw/
-def concatenate(paths, output):
-    writer = pdfrw.PdfWriter()
-
-    for path in paths:
-        reader = pdfrw.PdfReader(path)
-        writer.addpages(reader.pages)
-
-    writer.write(output)
-
-
 # PDFRW Safe Concat Function
 # CREDIT: https://stackoverflow.com/questions/57008782/pypdf2-pdffilemerger-loosing-pdf-module-in-merged-file
 def concatenate_pdfrw(pdf_files, output_filename):
@@ -249,8 +218,8 @@ def concatenate_pdfrw(pdf_files, output_filename):
                     if pdfrw.PdfName('Font') not in output_acroform[pdfrw.PdfName('DR')].keys():
                         # if output_acroform is missing entirely the /Font node under an existing /DR, simply add it
                         output_acroform[pdfrw.PdfName('DR')][pdfrw.PdfName('Font')] = \
-                        source_acroform[pdfrw.PdfName('DR')][
-                            pdfrw.PdfName('Font')]
+                            source_acroform[pdfrw.PdfName('DR')][
+                                pdfrw.PdfName('Font')]
                     else:
                         # else add new fonts only
                         for font_key in source_acroform[pdfrw.PdfName('DR')][pdfrw.PdfName('Font')].keys():
@@ -267,27 +236,177 @@ def concatenate_pdfrw(pdf_files, output_filename):
     output.write(output_filename)
 
 
+# PyPDF2 Set Need Appearances Function (Fixes fields not being visible when viewing generated PDF)
+# CREDIT: https://stackoverflow.com/questions/58898542/update-a-fillable-pdf-using-pypdf2
+def pypdf_set_need_appearances_writer(writer: PdfFileWriter):
+    # See 12.7.2 and 7.7.2 for more info: http://www.adobe.com/content/dam/acom/en/devnet/acrobat/pdfs/PDF32000_2008.pdf
+    try:
+        catalog = writer._root_object
+        # get the AcroForm tree
+        if "/AcroForm" not in catalog:
+            writer._root_object.update({
+                NameObject("/AcroForm"): IndirectObject(len(writer._objects), 0, writer)
+            })
+
+        need_appearances = NameObject("/NeedAppearances")
+        writer._root_object["/AcroForm"][need_appearances] = BooleanObject(True)
+        # del writer._root_object["/AcroForm"]['NeedAppearances']
+        return writer
+
+    except Exception as e:
+        print('set_need_appearances_writer() catch : ', repr(e))
+        return writer
+
+
+def get_signature():
+    if os.path.isfile('signature.png'):
+        return 'signature.png'
+    elif os.path.isfile('signature.jpg'):
+        return 'signature.jpg'
+    return ''
+
+
+def get_sup_signature():
+    if os.path.isfile('supsignature.png'):
+        return 'supsignature.png'
+    elif os.path.isfile('supsignature.jpg'):
+        return 'supsignature.jpg'
+    return ''
+
+
+def init_signatures(signature_path, sup_signature_path):
+    # CONSTANTS & INITIALIZATIONS
+    WATERMARK_FILE_COVER_LETTER = RESOURCE_DIRECTORY + '\\coverwatermark.pdf'
+    WATERMARK_FILE_42 = RESOURCE_DIRECTORY + '\\42watermark.pdf'
+    WATERMARK_FILE_43 = RESOURCE_DIRECTORY + '\\43watermark.pdf'
+
+    # IF A SIGNATURE IS ATTACHED, CREATE WATERMARK FILES FOR EACH PAGE THAT NEEDS TO BE SIGNED
+    # THESE FILES WILL LATER BE OVERLAID ON THE FILLED ERR DOCUMENTS
+    if signature_path != '':
+        # CREATE SIGNATURE WATERMARK FOR COVER LETTER PAGE
+        canvas_cover = canvas.Canvas(WATERMARK_FILE_COVER_LETTER, pagesize=reportlab.lib.pagesizes.letter)
+        canvas_cover.drawImage(signature_path, 0, 330, height=36, preserveAspectRatio=True)
+        canvas_cover.save()
+        # CREATE SIGNATURE WATERMARK FOR 3330-42
+        canvas_42 = canvas.Canvas(WATERMARK_FILE_42, pagesize=reportlab.lib.pagesizes.letter)
+        canvas_42.drawImage(signature_path, 8, 489, height=24, preserveAspectRatio=True)
+        canvas_42.save()
+        # CREATE SIGNATURE WATERMARK FOR 3330-43-1
+        canvas_43 = canvas.Canvas(WATERMARK_FILE_43, pagesize=reportlab.lib.pagesizes.letter)
+        canvas_43.drawImage(signature_path, -24, 92, height=24, preserveAspectRatio=True)
+        if sup_signature_path != '':
+            canvas_43.drawImage(sup_signature_path, 264, 92, height=24, preserveAspectRatio=True)
+        canvas_43.save()
+
+    # IF ONLY A SUPERVISOR SIGNATURE IS ATTACHED, CREATE A WATERMARK FILE ONLY FOR THE 3330-43-1
+    if sup_signature_path != '':
+        if not os.path.isfile(WATERMARK_FILE_43):
+            canvas_43 = canvas.Canvas(WATERMARK_FILE_43, pagesize=reportlab.lib.pagesizes.letter)
+            canvas_43.drawImage(sup_signature_path, 264, 92, height=24, preserveAspectRatio=True)
+            canvas_43.save()
+
+
+def draw_signatures(form_path, output_path):
+    # CONSTANTS & INITIALIZATIONS
+    WATERMARK_FILE_COVER_LETTER = RESOURCE_DIRECTORY + '\\coverwatermark.pdf'
+    WATERMARK_FILE_42 = RESOURCE_DIRECTORY + '\\42watermark.pdf'
+    WATERMARK_FILE_43 = RESOURCE_DIRECTORY + '\\43watermark.pdf'
+
+    # IF A SIGNATURE WATERMARK FILE IS FOUND, OVERLAY WATERMARK FILES FOR ALL 3 SIGNABLE PAGES ONTO PACKAGE
+    if os.path.isfile(WATERMARK_FILE_COVER_LETTER):
+        # CREATE INPUT READER & OUTPUT WRITER
+        output_file = PdfFileWriter()
+        pypdf_set_need_appearances_writer(output_file)
+        input_file = PdfFileReader(open(form_path, "rb"))
+
+        # GET COVER LETTER PAGE FROM FILLED PACKAGE, OVERLAY WATERMARK FILE, ADD TO OUTPUT FILE
+        cover_page = input_file.getPage(0)
+        watermark_cover = PdfFileReader(open(WATERMARK_FILE_COVER_LETTER, "rb"))
+        cover_page.mergePage(watermark_cover.getPage(0))
+        output_file.addPage(cover_page)
+
+        # GET 3330-42 PAGE FROM FILLED PACKAGE, OVERLAY WATERMARK FILE, ADD TO OUTPUT FILE
+        page_42 = input_file.getPage(1)
+        watermark_42 = PdfFileReader(open(WATERMARK_FILE_42, "rb"))
+        page_42.mergePage(watermark_42.getPage(0))
+        output_file.addPage(page_42)
+
+        # ADD FILLED 3330-42 PAGE 2 & 3330-43-1 PAGE 1 TO OUTPUT FILE
+        output_file.addPage(input_file.getPage(2))
+        output_file.addPage(input_file.getPage(3))
+
+        # GET 3330-43-1 PAGE FROM FILLED PACKAGE, OVERLAY WATERMARK FILE, ADD TO OUTPUT FILE
+        page_43 = input_file.getPage(4)
+        watermark_43 = PdfFileReader(open(WATERMARK_FILE_43, "rb"))
+        page_43.mergePage(watermark_43.getPage(0))
+        output_file.addPage(page_43)
+
+        # WRITE ALL PAGES TO OUTPUT_FILE
+        with open(output_path, "wb") as outputStream:
+            output_file.write(outputStream)
+
+        # CLOSE FILE STREAMS
+        input_file.stream.close()
+        watermark_cover.stream.close()
+        watermark_42.stream.close()
+        watermark_43.stream.close()
+
+    # IF ONLY A WATERMARK FILE FOR 3330-43-1 IS FOUND, OVERLAY ONLY WATERMARK FILE FOR 3330-43-1 ON PACKAGE
+    elif os.path.isfile(WATERMARK_FILE_43):
+        # CREATE INPUT READER & OUTPUT WRITER
+        output_file = PdfFileWriter()
+        pypdf_set_need_appearances_writer(output_file)
+        input_file = PdfFileReader(open(form_path, "rb"))
+
+        for i in range(4):
+            output_file.addPage(input_file.getPage(i))
+
+        # GET 3330-43-1 PAGE FROM FILLED PACKAGE, OVERLAY WATERMARK FILE, ADD TO OUTPUT FILE
+        page_43 = input_file.getPage(4)
+        watermark_43 = PdfFileReader(open(WATERMARK_FILE_43, "rb"))
+        page_43.mergePage(watermark_43.getPage(0))
+        output_file.addPage(page_43)
+
+        # WRITE ALL PAGES TO OUTPUT_FILE
+        with open(output_path, "wb") as outputStream:
+            output_file.write(outputStream)
+
+        # CLOSE FILE STREAMS
+        input_file.stream.close()
+        watermark_43.stream.close()
+
+
+def clean_files():
+    if os.path.isfile(RESOURCE_DIRECTORY + '\\42watermark.pdf'):
+        os.remove(RESOURCE_DIRECTORY + '\\42watermark.pdf')
+    if os.path.isfile(RESOURCE_DIRECTORY + '\\43watermark.pdf'):
+        os.remove(RESOURCE_DIRECTORY + '\\43watermark.pdf')
+    if os.path.isfile(RESOURCE_DIRECTORY + '\\coverwatermark.pdf'):
+        os.remove(RESOURCE_DIRECTORY + '\\coverwatermark.pdf')
+
+
 if __name__ == "__main__":
     # CONSTANTS
-    pdf_template = 'CoverLetter+3330-42+3330-43combined.pdf'
-    data_spreadsheet_path = '1. Personal Information.xlsx'
-    resume_path = 'resume.pdf'
-    performance_path = 'performance.pdf'
-    output_directory = 'Filled ERRs'
-
-    # GENERATES EMPTY DICTS FOR EACH FACILITY
-    data_fac1, data_fac2, data_fac3, data_fac4, data_fac5 = ({},) * 5
+    EMPTY_PDF_PATH = RESOURCE_DIRECTORY + '\\CoverLetter+3330-42+3330-43combined.pdf'
+    DATA_SPREADSHEET_PATH = '1. Personal Information.xlsx'
+    RESUME_PATH = 'resume.pdf'
+    PERFORMANCE_PATH = 'performance.pdf'
+    SIGNATURE_IMAGE_PATH = get_signature()
+    SUP_SIGNATURE_IMAGE_PATH = get_sup_signature()
+    init_signatures(SIGNATURE_IMAGE_PATH, SUP_SIGNATURE_IMAGE_PATH)
 
     # CREATES EXCELFILE OBJECT TO PARSE BACKEND DATA INTO USABLE DICT
-    data_xls = pd.ExcelFile(data_spreadsheet_path, engine="openpyxl")
+    data_xls = pd.ExcelFile(DATA_SPREADSHEET_PATH, engine="openpyxl")
     data_backend = data_xls.parse("Backend", header=None, index_col=0, usecols="A,B").fillna('').to_dict()
 
-    # CREATES OUTPUT DIRECTORY IF NOT EXISTS
-    if not os.path.exists(output_directory):
-        os.mkdir(output_directory)
+    # CREATES OUTPUT, BUILD, RESOURCE DIRECTORIES IF NOT EXISTS
+    if not os.path.exists(OUTPUT_DIRECTORY):
+        os.mkdir(OUTPUT_DIRECTORY)
+    if not os.path.exists(RESOURCE_DIRECTORY):
+        os.mkdir(RESOURCE_DIRECTORY)
 
     # ITERATES THROUGH EACH ERR
-    for i in range(1, 6):
+    for i in range(1, 21):
         # CHECKS IF FACILITY WAS SELECTED, SKIPS IF NOT
         if data_backend[1].get("Facility" + str(i)):
 
@@ -295,31 +414,44 @@ if __name__ == "__main__":
             data = data_xls.parse("PDFKeys" + str(i), header=None, index_col=0).fillna('').to_dict()
 
             # OUTPUT PATH CONSTANTS
-            output_path = output_directory + "\\" + str(data[1].get("Facility")) + "(temp).pdf"
-            final_output_path = output_directory + "\\" + str(data[1].get("Facility")) + ".pdf"
+            FILLED_PDF_PATH = OUTPUT_DIRECTORY + "\\" + str(data[1].get("Facility")) + "(temp).pdf"
+            SIGNED_PDF_PATH = OUTPUT_DIRECTORY + "\\" + str(data[1].get("Facility")) + "(signed).pdf"
+            FINAL_OUTPUT_PATH = OUTPUT_DIRECTORY + "\\" + str(data[1].get("Facility")) + ".pdf"
 
-            # RUNS SINGLE FORM FILL WITH PDF KEYS & GENERATES TEMPORARY OUTPUT FILE
-            single_form_fill(pdf_template, data[1], output_path)
+            # FILL FORM AND DRAW SIGNATURES IF PRESENT
+            single_form_fill(EMPTY_PDF_PATH, data[1], FILLED_PDF_PATH)
+            draw_signatures(FILLED_PDF_PATH, SIGNED_PDF_PATH)
 
             # CREATES LIST OF FILES TO CONCATENATE INTO ONE PACKAGE
-            # IF FILES NOT FOUND, SKIPS
-            concat_paths = [output_path]
-            if os.path.isfile(resume_path):
-                concat_paths.append(resume_path)
-            if os.path.isfile(performance_path):
-                concat_paths.append(performance_path)
+            if os.path.isfile(SIGNED_PDF_PATH):
+                concat_paths = [SIGNED_PDF_PATH]
+            else:
+                concat_paths = [FILLED_PDF_PATH]
+
+            # CHECK IF RESUME OR PMAS IS ATTACHED, APPEND TO END
+            if os.path.isfile(RESUME_PATH):
+                concat_paths.append(RESUME_PATH)
+            if os.path.isfile(PERFORMANCE_PATH):
+                concat_paths.append(PERFORMANCE_PATH)
 
             # CHECKS IF PERFORMANCE PLAN OR RESUME IS ATTACHED
             # IF SO, CONCATENATES INTO ONE PACKAGE
             # IF FILES NOT FOUND, RENAMES TEMPORARY OUTPUT FILE TO FINAL OUTPUT FILE
             if concat_paths.__len__() > 1:
-                concatenate_pdfrw(concat_paths, final_output_path)
-                os.remove(output_path)
+                concatenate_pdfrw(concat_paths, FINAL_OUTPUT_PATH)
+                if os.path.isfile(FILLED_PDF_PATH):
+                    os.remove(FILLED_PDF_PATH)
+                if os.path.isfile(SIGNED_PDF_PATH):
+                    os.remove(SIGNED_PDF_PATH)
             else:
-                if os.path.isfile(final_output_path):
-                    os.remove(final_output_path)
-                os.rename(output_path, final_output_path)
+                if os.path.isfile(FINAL_OUTPUT_PATH):
+                    os.remove(FINAL_OUTPUT_PATH)
+                if os.path.isfile(SIGNED_PDF_PATH):
+                    os.rename(SIGNED_PDF_PATH, FINAL_OUTPUT_PATH)
+                else:
+                    os.rename(FILLED_PDF_PATH, FINAL_OUTPUT_PATH)
 
             print("Processed: " + str(data[1].get("Facility")))
 
+    clean_files()
     input("Press enter to exit!")
