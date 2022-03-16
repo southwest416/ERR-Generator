@@ -287,24 +287,24 @@ def init_signatures(signature_path, sup_signature_path):
     if signature_path != '':
         # CREATE SIGNATURE WATERMARK FOR COVER LETTER PAGE
         canvas_cover = canvas.Canvas(WATERMARK_FILE_COVER_LETTER, pagesize=reportlab.lib.pagesizes.letter)
-        canvas_cover.drawImage(signature_path, 0, 330, height=36, preserveAspectRatio=True)
+        canvas_cover.drawImage(signature_path, 72, 330, height=36, preserveAspectRatio=True, anchor='sw')
         canvas_cover.save()
         # CREATE SIGNATURE WATERMARK FOR 3330-42
         canvas_42 = canvas.Canvas(WATERMARK_FILE_42, pagesize=reportlab.lib.pagesizes.letter)
-        canvas_42.drawImage(signature_path, 8, 489, height=24, preserveAspectRatio=True)
+        canvas_42.drawImage(signature_path, 120, 489, width=180, height=24, preserveAspectRatio=True, anchor='sw')
         canvas_42.save()
         # CREATE SIGNATURE WATERMARK FOR 3330-43-1
         canvas_43 = canvas.Canvas(WATERMARK_FILE_43, pagesize=reportlab.lib.pagesizes.letter)
-        canvas_43.drawImage(signature_path, -24, 92, height=24, preserveAspectRatio=True)
+        canvas_43.drawImage(signature_path, 88, 92, width=210, height=24, preserveAspectRatio=True, anchor='sw')
         if sup_signature_path != '':
-            canvas_43.drawImage(sup_signature_path, 264, 92, height=24, preserveAspectRatio=True)
+            canvas_43.drawImage(sup_signature_path, 378, 92, width=210, height=24, preserveAspectRatio=True, anchor='sw')
         canvas_43.save()
 
     # IF ONLY A SUPERVISOR SIGNATURE IS ATTACHED, CREATE A WATERMARK FILE ONLY FOR THE 3330-43-1
     if sup_signature_path != '':
         if not os.path.isfile(WATERMARK_FILE_43):
             canvas_43 = canvas.Canvas(WATERMARK_FILE_43, pagesize=reportlab.lib.pagesizes.letter)
-            canvas_43.drawImage(sup_signature_path, 264, 92, height=24, preserveAspectRatio=True)
+            canvas_43.drawImage(sup_signature_path, 378, 92, width=210, height=24, preserveAspectRatio=True, anchor='sw')
             canvas_43.save()
 
 
