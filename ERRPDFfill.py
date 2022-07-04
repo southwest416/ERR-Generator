@@ -23,6 +23,10 @@ RESOURCE_DIRECTORY = 'resources'
 # PDFRW FUNCTIONS
 # CREDIT: https://github.com/WestHealth/pdf-form-filler
 def _text_form(annotation, value):
+    # Improper way to replace "False" value with a 0
+    # Should fix this eventually but probably won't
+    if value == False:
+        value = 0
     pdfstr = pdfrw.objects.pdfstring.PdfString.encode(str(value))
     annotation.update(pdfrw.PdfDict(V=pdfstr, AS=pdfstr))
 
