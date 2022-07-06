@@ -41,9 +41,17 @@ This program automatically generates ERR packages including a Cover letter, 3330
 
    - ![Copy & Save resume as resume.pdf](https://i.imgur.com/Q6lUtEP.gif)
 
-7. Add an image of your signature, and with permission, a supervisors signature, to the main directory. These files may be of type png or jpg. **Rename the respective files to "signature.png"/"signature.jpg" and "supsignature.png"/"supsignature.jpg"** _NOTE: ADDING SOMEONE ELSE'S SIGNATURE ON A DOCUMENT WITHOUT THEIR KNOWLEDGE MAY BE A VIOLATION OF POLICY, REGULATION, AND/OR LAW. ONLY ATTACH A SUPERVISOR'S SIGNATURE WITH THEIR EXPRESS PERMISSION. THE CREATOR OF THIS PROGRAM ASSUMES NO LIABILITY FOR MISUSE OF THIS FUNCTION_
+7a. Add an image of your signature, and with permission, a supervisors signature, to the main directory. These files may be of type png or jpg. **Rename the respective files to "signature.png"/"signature.jpg" and "supsignature.png"/"supsignature.jpg"**
 
    - ![Attach Signature Files](https://i.imgur.com/ROEhHeH.png)
+   
+7b. Add a pdf file of the signed 3330-43-1 PAGE 2 ONLY. **Name this file "3330-43-1-signed.pdf"**. This page should not change between multiple packages generated at the same time, so you may be able to reuse this page _with a supervisors permission ONLY_. Please note that you will be responsible for ensuring this page is filled out completely and correctly before overwriting using this function, as the generator will not attempt to fill any field on this page once overwritten.
+
+   - ![SIGNED 3330-43-1 page 2](https://i.imgur.com/1n26JWG.png)
+   
+   - ![Copy and rename to 3330-43-1-signed.pdf](https://i.imgur.com/DvY4Koy.gif)
+   
+**DISCLAIMER FOR STEPS 7A AND 7B: ADDING SOMEONE ELSE'S SIGNATURE ON A DOCUMENT WITHOUT THEIR KNOWLEDGE OR USING SOMEONE ELSES SIGNATURE IN A WAY NOT EXPRESSLY PERMITTED MAY BE A VIOLATION OF POLICY, REGULATION, AND/OR LAW. ONLY ATTACH A SUPERVISOR'S SIGNATURE WITH THEIR EXPRESS PERMISSION. THE CREATOR OF THIS PROGRAM ASSUMES NO LIABILITY FOR MISUSE OF THIS FUNCTION**
 
 8. Run ERRPDFfill.exe. Windows may warn that this program is an "unrecognized app" since it is not signed by a typical developer. If so, please select "More Info," then click "Run anyway" to execute.
 
