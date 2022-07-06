@@ -314,11 +314,12 @@ def init_signatures(signature_path, sup_signature_path):
 
 # Overlays signature watermarks onto filled packages
 # CREDIT: https://stackoverflow.com/questions/2925484/place-image-over-pdf
-def draw_signatures(form_path, output_path):
+def insert_signatures(form_path, output_path):
     # CONSTANTS & INITIALIZATIONS
     WATERMARK_FILE_COVER_LETTER = RESOURCE_DIRECTORY + '\\coverwatermark.pdf'
     WATERMARK_FILE_42 = RESOURCE_DIRECTORY + '\\42watermark.pdf'
     WATERMARK_FILE_43 = RESOURCE_DIRECTORY + '\\43watermark.pdf'
+    SIGNED_3330_43_1_PATH = '3330-43-1-signed.pdf'
 
     # IF A SIGNATURE WATERMARK FILE IS FOUND, OVERLAY WATERMARK FILES FOR ALL 3 SIGNABLE PAGES ONTO PACKAGE
     if os.path.isfile(WATERMARK_FILE_COVER_LETTER):
@@ -327,15 +328,19 @@ def draw_signatures(form_path, output_path):
         pypdf_set_need_appearances_writer(output_file)
         input_file = PdfFileReader(open(form_path, "rb"))
 
+        # CREATE WATERMARK FILE READERS
+        watermark_cover = PdfFileReader(open(WATERMARK_FILE_COVER_LETTER, "rb"))
+        watermark_42 = PdfFileReader(open(WATERMARK_FILE_42, "rb"))
+        watermark_43 = PdfFileReader(open(WATERMARK_FILE_43, "rb"))
+        signed_3330_43_1_file = None
+
         # GET COVER LETTER PAGE FROM FILLED PACKAGE, OVERLAY WATERMARK FILE, ADD TO OUTPUT FILE
         cover_page = input_file.getPage(0)
-        watermark_cover = PdfFileReader(open(WATERMARK_FILE_COVER_LETTER, "rb"))
         cover_page.mergePage(watermark_cover.getPage(0))
         output_file.addPage(cover_page)
 
         # GET 3330-42 PAGE FROM FILLED PACKAGE, OVERLAY WATERMARK FILE, ADD TO OUTPUT FILE
         page_42 = input_file.getPage(1)
-        watermark_42 = PdfFileReader(open(WATERMARK_FILE_42, "rb"))
         page_42.mergePage(watermark_42.getPage(0))
         output_file.addPage(page_42)
 
@@ -343,11 +348,17 @@ def draw_signatures(form_path, output_path):
         output_file.addPage(input_file.getPage(2))
         output_file.addPage(input_file.getPage(3))
 
-        # GET 3330-43-1 PAGE FROM FILLED PACKAGE, OVERLAY WATERMARK FILE, ADD TO OUTPUT FILE
-        page_43 = input_file.getPage(4)
-        watermark_43 = PdfFileReader(open(WATERMARK_FILE_43, "rb"))
-        page_43.mergePage(watermark_43.getPage(0))
-        output_file.addPage(page_43)
+        # CHECK IF FULL SIGNED 3330_43_1 PAGE 2 EXISTS
+        # IF SO, INSERT HERE, OTHERWISE, DRAW SIGNATURES
+        if os.path.isfile(SIGNED_3330_43_1_PATH):
+            # GET SIGNED 3330-43-1 PAGE AND ADD TO OUTPUT FILE
+            signed_3330_43_1_file = PdfFileReader(open(SIGNED_3330_43_1_PATH, "rb"))
+            output_file.addPage(signed_3330_43_1_file.getPage(0))
+        else:
+            # GET 3330-43-1 PAGE FROM FILLED PACKAGE, OVERLAY WATERMARK FILE, ADD TO OUTPUT FILE
+            page_43 = input_file.getPage(4)
+            page_43.mergePage(watermark_43.getPage(0))
+            output_file.addPage(page_43)
 
         # WRITE ALL PAGES TO OUTPUT_FILE
         with open(output_path, "wb") as outputStream:
@@ -358,6 +369,8 @@ def draw_signatures(form_path, output_path):
         watermark_cover.stream.close()
         watermark_42.stream.close()
         watermark_43.stream.close()
+        if signed_3330_43_1_file is not None:
+            signed_3330_43_1_file.stream.close()
 
     # IF ONLY A WATERMARK FILE FOR 3330-43-1 IS FOUND, OVERLAY ONLY WATERMARK FILE FOR 3330-43-1 ON PACKAGE
     elif os.path.isfile(WATERMARK_FILE_43):
@@ -366,14 +379,25 @@ def draw_signatures(form_path, output_path):
         pypdf_set_need_appearances_writer(output_file)
         input_file = PdfFileReader(open(form_path, "rb"))
 
+        # CREATE WATERMARK FILE READERS
+        watermark_43 = PdfFileReader(open(WATERMARK_FILE_43, "rb"))
+        signed_3330_43_1_file = None
+
+        # ADD COVER LETTER, 3330-42, AND FIRST PAGE OF 3330-43-1
         for i in range(4):
             output_file.addPage(input_file.getPage(i))
 
-        # GET 3330-43-1 PAGE FROM FILLED PACKAGE, OVERLAY WATERMARK FILE, ADD TO OUTPUT FILE
-        page_43 = input_file.getPage(4)
-        watermark_43 = PdfFileReader(open(WATERMARK_FILE_43, "rb"))
-        page_43.mergePage(watermark_43.getPage(0))
-        output_file.addPage(page_43)
+        # CHECK IF FULL SIGNED 3330_43_1 PAGE 2 EXISTS
+        # IF SO, INSERT HERE, OTHERWISE, DRAW SIGNATURES
+        if os.path.isfile(SIGNED_3330_43_1_PATH):
+            # GET SIGNED 3330-43-1 PAGE AND ADD TO OUTPUT FILE
+            signed_3330_43_1_file = PdfFileReader(open(SIGNED_3330_43_1_PATH, "rb"))
+            output_file.addPage(signed_3330_43_1_file.getPage(0))
+        else:
+            # GET 3330-43-1 PAGE FROM FILLED PACKAGE, OVERLAY WATERMARK FILE, ADD TO OUTPUT FILE
+            page_43 = input_file.getPage(4)
+            page_43.mergePage(watermark_43.getPage(0))
+            output_file.addPage(page_43)
 
         # WRITE ALL PAGES TO OUTPUT_FILE
         with open(output_path, "wb") as outputStream:
@@ -382,6 +406,31 @@ def draw_signatures(form_path, output_path):
         # CLOSE FILE STREAMS
         input_file.stream.close()
         watermark_43.stream.close()
+        if signed_3330_43_1_file is not None:
+            signed_3330_43_1_file.stream.close()
+
+    # IF NO WATERMARK FILES FOUND BUT A SIGNED 3330-43-1 PAGE IS, REPLACE THAT PAGE
+    elif os.path.isfile(SIGNED_3330_43_1_PATH):
+        # CREATE INPUT READER & OUTPUT WRITER
+        output_file = PdfFileWriter()
+        pypdf_set_need_appearances_writer(output_file)
+        input_file = PdfFileReader(open(form_path, "rb"))
+        signed_3330_43_1_file = PdfFileReader(open(SIGNED_3330_43_1_PATH, "rb"))
+
+        # ADD COVER LETTER, 3330-42, AND FIRST PAGE OF 3330-43-1
+        for i in range(4):
+            output_file.addPage(input_file.getPage(i))
+
+        # GET SIGNED 3330-43-1 PAGE AND ADD TO OUTPUT FILE
+        output_file.addPage(signed_3330_43_1_file.getPage(0))
+
+        # WRITE ALL PAGES TO OUTPUT_FILE
+        with open(output_path, "wb") as outputStream:
+            output_file.write(outputStream)
+
+        # CLOSE FILE STREAMS
+        input_file.stream.close()
+        signed_3330_43_1_file.stream.close()
 
 
 def clean_files():
@@ -426,11 +475,12 @@ if __name__ == "__main__":
             SIGNED_PDF_PATH = OUTPUT_DIRECTORY + "\\" + str(data[1].get("Facility")) + "(signed).pdf"
             FINAL_OUTPUT_PATH = OUTPUT_DIRECTORY + "\\" + str(data[1].get("Facility")) + ".pdf"
 
-            # FILL FORM AND DRAW SIGNATURES IF PRESENT
+            # FILL FORM AND INSERT SIGNATURES IF PRESENT
             single_form_fill(EMPTY_PDF_PATH, data[1], FILLED_PDF_PATH)
-            draw_signatures(FILLED_PDF_PATH, SIGNED_PDF_PATH)
+            insert_signatures(FILLED_PDF_PATH, SIGNED_PDF_PATH)
 
             # CREATES LIST OF FILES TO CONCATENATE INTO ONE PACKAGE
+            # IF A SIGNED 3330-43-1 PAGE IS FOUND, INSERT INTO PACKAGE
             if os.path.isfile(SIGNED_PDF_PATH):
                 concat_paths = [SIGNED_PDF_PATH]
             else:
