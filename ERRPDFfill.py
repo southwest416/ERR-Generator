@@ -23,6 +23,12 @@ WIDGET_SUBTYPE_KEY = '/Widget'
 # GLOBAL CONSTANTS
 OUTPUT_DIRECTORY = 'Filled ERRs'
 RESOURCE_DIRECTORY = 'resources'
+EMPTY_PDF_PATH = RESOURCE_DIRECTORY + '\\CoverLetter+3330-42+3330-43combined.pdf'
+DATA_SPREADSHEET_PATH = '1. Personal Information.xlsx'
+
+PERFORMANCE_PATH_ = 'performance.pdf'
+RESUME_PATH_ = 'resume.pdf'
+SIGNED_3330_43_1_PATH_ = '3330-43-1-signed.pdf'
 
 WATERMARK_FILE_COVER_LETTER = RESOURCE_DIRECTORY + '\\coverwatermark.pdf'
 WATERMARK_FILE_42 = RESOURCE_DIRECTORY + '\\42watermark.pdf'
@@ -290,22 +296,20 @@ def get_sup_signature():
     return ''
 
 
-# Creates watermark PDFs for drawn signatures to overlay before generating & signing packages
-# This function is separate as it is only necessary to run once per program execution, not once per package
+# Creates "watermark" PDFs that are empty PDFs with signatures drawn that will later be overlaid on filled pages
+# This function is run early as it is only necessary to run once per program execution, not once per package
 # CREDIT: https://stackoverflow.com/questions/2925484/place-image-over-pdf
-def init_signatures(signature_path, sup_signature_path):
-    # IF A SIGNATURE IS ATTACHED, CREATE WATERMARK FILES FOR EACH PAGE THAT NEEDS TO BE SIGNED
-    # THESE FILES WILL LATER BE OVERLAID ON THE FILLED ERR DOCUMENTS
+def generate_signature_watermark_files(signature_path, sup_signature_path):
+
     if signature_path != '':
-        # CREATE SIGNATURE WATERMARK FOR COVER LETTER PAGE
         canvas_cover = canvas.Canvas(WATERMARK_FILE_COVER_LETTER, pagesize=reportlab.lib.pagesizes.letter)
         canvas_cover.drawImage(signature_path, 72, 330, height=36, preserveAspectRatio=True, anchor='sw')
         canvas_cover.save()
-        # CREATE SIGNATURE WATERMARK FOR 3330-42
+
         canvas_42 = canvas.Canvas(WATERMARK_FILE_42, pagesize=reportlab.lib.pagesizes.letter)
         canvas_42.drawImage(signature_path, 120, 489, width=180, height=24, preserveAspectRatio=True, anchor='sw')
         canvas_42.save()
-        # CREATE SIGNATURE WATERMARK FOR 3330-43-1
+
         canvas_43 = canvas.Canvas(WATERMARK_FILE_43, pagesize=reportlab.lib.pagesizes.letter)
         canvas_43.drawImage(signature_path, 88, 92, width=210, height=24, preserveAspectRatio=True, anchor='sw')
         if sup_signature_path != '':
@@ -313,7 +317,6 @@ def init_signatures(signature_path, sup_signature_path):
                                 anchor='sw')
         canvas_43.save()
 
-    # IF ONLY A SUPERVISOR SIGNATURE IS ATTACHED, CREATE A WATERMARK FILE ONLY FOR THE 3330-43-1
     elif sup_signature_path != '':
         canvas_43 = canvas.Canvas(WATERMARK_FILE_43, pagesize=reportlab.lib.pagesizes.letter)
         canvas_43.drawImage(sup_signature_path, 378, 92, width=210, height=24, preserveAspectRatio=True,
@@ -321,23 +324,23 @@ def init_signatures(signature_path, sup_signature_path):
         canvas_43.save()
 
 
-# Overlays signature watermarks onto filled packages
+# Overlays signature watermark files onto each page or inserts signed page in place of generated page as necessary
 # CREDIT: https://stackoverflow.com/questions/2925484/place-image-over-pdf
-def insert_signatures(form_path, output_path):
-    SIGNED_3330_43_1_PATH = '3330-43-1-signed.pdf'
-
-    output_file = input_file = None
-    watermark_cover = watermark_42 = watermark_43 = signed_3330_43_1_file = None
+def insert_signatures(form_path, output_path, signed_3330_43_1_path):
 
     watermark_cover_letter_exists = os.path.isfile(WATERMARK_FILE_COVER_LETTER)
     watermark_42_exists = os.path.isfile(WATERMARK_FILE_42)
     watermark_43_exists = os.path.isfile(WATERMARK_FILE_43)
-    signed_3330_43_1_exists = os.path.isfile(SIGNED_3330_43_1_PATH)
+    signed_3330_43_1_exists = os.path.isfile(signed_3330_43_1_path)
 
     if watermark_cover_letter_exists or watermark_42_exists or watermark_43_exists or signed_3330_43_1_exists:
         output_file = PdfFileWriter()
         pypdf_set_need_appearances_writer(output_file)
         input_file = PdfFileReader(open(form_path, "rb"))
+
+        # Since we don't know which files/image combos the user may use,
+        # we declare the PdfFileReader variables here so we can close any used streams at the end of the function
+        watermark_cover = watermark_42 = watermark_43 = signed_3330_43_1_file = None
 
         if watermark_cover_letter_exists:
             watermark_cover = PdfFileReader(open(WATERMARK_FILE_COVER_LETTER, "rb"))
@@ -357,12 +360,13 @@ def insert_signatures(form_path, output_path):
         else:
             output_file.addPage(input_file.getPage(1))
 
-        # ADD FILLED 3330-42 PAGE 2 & 3330-43-1 PAGE 1 TO OUTPUT FILE
+        # No signatures on pages 2 and 3
         output_file.addPage(input_file.getPage(2))
         output_file.addPage(input_file.getPage(3))
 
+        # We prefer a full signed 3330-43-1 page 2 over a generated one
         if signed_3330_43_1_exists:
-            signed_3330_43_1_file = PdfFileReader(open(SIGNED_3330_43_1_PATH, "rb"))
+            signed_3330_43_1_file = PdfFileReader(open(signed_3330_43_1_path, "rb"))
             output_file.addPage(signed_3330_43_1_file.getPage(0))
         elif watermark_43_exists:
             watermark_43 = PdfFileReader(open(WATERMARK_FILE_43, "rb"))
@@ -387,118 +391,6 @@ def insert_signatures(form_path, output_path):
             signed_3330_43_1_file.stream.close()
 
 
-    # # IF A SIGNATURE WATERMARK FILE IS FOUND, OVERLAY WATERMARK FILES FOR ALL 3 SIGNABLE PAGES ONTO PACKAGE
-    # if os.path.isfile(WATERMARK_FILE_COVER_LETTER):
-    #     # CREATE INPUT READER & OUTPUT WRITER
-    #     output_file = PdfFileWriter()
-    #     pypdf_set_need_appearances_writer(output_file)
-    #     input_file = PdfFileReader(open(form_path, "rb"))
-    #
-    #     # CREATE WATERMARK FILE READERS
-    #     watermark_cover = PdfFileReader(open(WATERMARK_FILE_COVER_LETTER, "rb"))
-    #     watermark_42 = PdfFileReader(open(WATERMARK_FILE_42, "rb"))
-    #     watermark_43 = PdfFileReader(open(WATERMARK_FILE_43, "rb"))
-    #     signed_3330_43_1_file = None
-    #
-    #     # GET COVER LETTER PAGE FROM FILLED PACKAGE, OVERLAY WATERMARK FILE, ADD TO OUTPUT FILE
-    #     cover_page = input_file.getPage(0)
-    #     cover_page.mergePage(watermark_cover.getPage(0))
-    #     output_file.addPage(cover_page)
-    #
-    #     # GET 3330-42 PAGE FROM FILLED PACKAGE, OVERLAY WATERMARK FILE, ADD TO OUTPUT FILE
-    #     page_42 = input_file.getPage(1)
-    #     page_42.mergePage(watermark_42.getPage(0))
-    #     output_file.addPage(page_42)
-    #
-    #     # ADD FILLED 3330-42 PAGE 2 & 3330-43-1 PAGE 1 TO OUTPUT FILE
-    #     output_file.addPage(input_file.getPage(2))
-    #     output_file.addPage(input_file.getPage(3))
-    #
-    #     # CHECK IF FULL SIGNED 3330_43_1 PAGE 2 EXISTS
-    #     # IF SO, INSERT HERE, OTHERWISE, DRAW SIGNATURES
-    #     if os.path.isfile(SIGNED_3330_43_1_PATH):
-    #         # GET SIGNED 3330-43-1 PAGE AND ADD TO OUTPUT FILE
-    #         signed_3330_43_1_file = PdfFileReader(open(SIGNED_3330_43_1_PATH, "rb"))
-    #         output_file.addPage(signed_3330_43_1_file.getPage(0))
-    #     else:
-    #         # GET 3330-43-1 PAGE FROM FILLED PACKAGE, OVERLAY WATERMARK FILE, ADD TO OUTPUT FILE
-    #         page_43 = input_file.getPage(4)
-    #         page_43.mergePage(watermark_43.getPage(0))
-    #         output_file.addPage(page_43)
-    #
-    #     # WRITE ALL PAGES TO OUTPUT_FILE
-    #     with open(output_path, "wb") as outputStream:
-    #         output_file.write(outputStream)
-    #
-    #     # CLOSE FILE STREAMS
-    #     input_file.stream.close()
-    #     watermark_cover.stream.close()
-    #     watermark_42.stream.close()
-    #     watermark_43.stream.close()
-    #     if signed_3330_43_1_file is not None:
-    #         signed_3330_43_1_file.stream.close()
-    #
-    # # IF ONLY A WATERMARK FILE FOR 3330-43-1 IS FOUND, OVERLAY ONLY WATERMARK FILE FOR 3330-43-1 ON PACKAGE
-    # elif os.path.isfile(WATERMARK_FILE_43):
-    #     # CREATE INPUT READER & OUTPUT WRITER
-    #     output_file = PdfFileWriter()
-    #     pypdf_set_need_appearances_writer(output_file)
-    #     input_file = PdfFileReader(open(form_path, "rb"))
-    #
-    #     # CREATE WATERMARK FILE READERS
-    #     watermark_43 = PdfFileReader(open(WATERMARK_FILE_43, "rb"))
-    #     signed_3330_43_1_file = None
-    #
-    #     # ADD COVER LETTER, 3330-42, AND FIRST PAGE OF 3330-43-1
-    #     for i in range(4):
-    #         output_file.addPage(input_file.getPage(i))
-    #
-    #     # CHECK IF FULL SIGNED 3330_43_1 PAGE 2 EXISTS
-    #     # IF SO, INSERT HERE, OTHERWISE, DRAW SIGNATURES
-    #     if os.path.isfile(SIGNED_3330_43_1_PATH):
-    #         # GET SIGNED 3330-43-1 PAGE AND ADD TO OUTPUT FILE
-    #         signed_3330_43_1_file = PdfFileReader(open(SIGNED_3330_43_1_PATH, "rb"))
-    #         output_file.addPage(signed_3330_43_1_file.getPage(0))
-    #     else:
-    #         # GET 3330-43-1 PAGE FROM FILLED PACKAGE, OVERLAY WATERMARK FILE, ADD TO OUTPUT FILE
-    #         page_43 = input_file.getPage(4)
-    #         page_43.mergePage(watermark_43.getPage(0))
-    #         output_file.addPage(page_43)
-    #
-    #     # WRITE ALL PAGES TO OUTPUT_FILE
-    #     with open(output_path, "wb") as outputStream:
-    #         output_file.write(outputStream)
-    #
-    #     # CLOSE FILE STREAMS
-    #     input_file.stream.close()
-    #     watermark_43.stream.close()
-    #     if signed_3330_43_1_file is not None:
-    #         signed_3330_43_1_file.stream.close()
-    #
-    # # IF NO WATERMARK FILES FOUND BUT A SIGNED 3330-43-1 PAGE IS, REPLACE THAT PAGE
-    # elif os.path.isfile(SIGNED_3330_43_1_PATH):
-    #     # CREATE INPUT READER & OUTPUT WRITER
-    #     output_file = PdfFileWriter()
-    #     pypdf_set_need_appearances_writer(output_file)
-    #     input_file = PdfFileReader(open(form_path, "rb"))
-    #     signed_3330_43_1_file = PdfFileReader(open(SIGNED_3330_43_1_PATH, "rb"))
-    #
-    #     # ADD COVER LETTER, 3330-42, AND FIRST PAGE OF 3330-43-1
-    #     for i in range(4):
-    #         output_file.addPage(input_file.getPage(i))
-    #
-    #     # GET SIGNED 3330-43-1 PAGE AND ADD TO OUTPUT FILE
-    #     output_file.addPage(signed_3330_43_1_file.getPage(0))
-    #
-    #     # WRITE ALL PAGES TO OUTPUT_FILE
-    #     with open(output_path, "wb") as outputStream:
-    #         output_file.write(outputStream)
-    #
-    #     # CLOSE FILE STREAMS
-    #     input_file.stream.close()
-    #     signed_3330_43_1_file.stream.close()
-
-
 def clean_files():
     if os.path.isfile(RESOURCE_DIRECTORY + '\\42watermark.pdf'):
         os.remove(RESOURCE_DIRECTORY + '\\42watermark.pdf')
@@ -508,61 +400,52 @@ def clean_files():
         os.remove(RESOURCE_DIRECTORY + '\\coverwatermark.pdf')
 
 
-def generate_err(resume_path="resume.pdf", performance_path="performance.pdf", signed_43_1_path="3330-43-1-signed.pdf",
-                 signature_img_path=get_signature(), sup_signature_img_path=get_sup_signature(), progress_tracker=None):
-    # CONSTANTS & INITIALIZATIONS
-    EMPTY_PDF_PATH = RESOURCE_DIRECTORY + '\\CoverLetter+3330-42+3330-43combined.pdf'
-    DATA_SPREADSHEET_PATH = '1. Personal Information.xlsx'
-    init_signatures(signature_img_path, sup_signature_img_path)
+def generate_err(resume_path, performance_path, signed_43_1_path, signature_img_path, sup_signature_img_path,
+                 progress_tracker=None):
 
-    # CREATES EXCELFILE OBJECT TO PARSE BACKEND DATA INTO USABLE DICT
+    generate_signature_watermark_files(signature_img_path, sup_signature_img_path)
+
     data_xls = pd.ExcelFile(DATA_SPREADSHEET_PATH, engine="openpyxl")
     data_backend = data_xls.parse("Backend", header=None, index_col=0, usecols="A,B").fillna('').to_dict()
 
-    # CREATES OUTPUT, BUILD, RESOURCE DIRECTORIES IF NOT EXISTS
     if not os.path.exists(OUTPUT_DIRECTORY):
         os.mkdir(OUTPUT_DIRECTORY)
     if not os.path.exists(RESOURCE_DIRECTORY):
         os.mkdir(RESOURCE_DIRECTORY)
 
-    # COUNT NUMBER OF ERR'S
+    # Excel document supports maximum 20 ERRs at once
     for i in range(1, 21):
         if data_backend[1].get("Facility" + str(i)):
             num_err = i
 
-    # ITERATES THROUGH EACH ERR
     for i in range(1, num_err + 1):
-        # CHECKS IF FACILITY WAS SELECTED, SKIPS IF NOT
         if data_backend[1].get("Facility" + str(i)):
 
-            # CREATES DICT FOR FACILITY i CONTAINING ALL PDF KEYS TO FILL
             data = data_xls.parse("PDFKeys" + str(i), header=None, index_col=0).fillna('').to_dict()
 
-            # OUTPUT PATH CONSTANTS
+            # Each path represents a "step" in the generation, package will be filled first, then signed, then finalized
             FILLED_PDF_PATH = OUTPUT_DIRECTORY + "\\" + str(data[1].get("Facility")) + "(temp).pdf"
             SIGNED_PDF_PATH = OUTPUT_DIRECTORY + "\\" + str(data[1].get("Facility")) + "(signed).pdf"
             FINAL_OUTPUT_PATH = OUTPUT_DIRECTORY + "\\" + str(data[1].get("Facility")) + ".pdf"
 
-            # FILL FORM AND INSERT SIGNATURES IF PRESENT
             single_form_fill(EMPTY_PDF_PATH, data[1], FILLED_PDF_PATH)
-            insert_signatures(FILLED_PDF_PATH, SIGNED_PDF_PATH)
+            insert_signatures(FILLED_PDF_PATH, SIGNED_PDF_PATH, signed_43_1_path)
 
-            # CREATES LIST OF FILES TO CONCATENATE INTO ONE PACKAGE
-            # IF A SIGNED 3330-43-1 PAGE IS FOUND, INSERT INTO PACKAGE
+            # concat_paths represents the structure of an ERR package
+            # We start with the filled/signed portion including Cover letter, 3330-42, and 3330-43-1
+            # Then we attach a resume, then a performance plan, in that order
             if os.path.isfile(SIGNED_PDF_PATH):
                 concat_paths = [SIGNED_PDF_PATH]
             else:
                 concat_paths = [FILLED_PDF_PATH]
 
-            # CHECK IF RESUME OR PMAS IS ATTACHED, APPEND TO END
             if os.path.isfile(resume_path):
                 concat_paths.append(resume_path)
             if os.path.isfile(performance_path):
                 concat_paths.append(performance_path)
 
-            # CHECKS IF PERFORMANCE PLAN OR RESUME IS ATTACHED
-            # IF SO, CONCATENATES INTO ONE PACKAGE
-            # IF FILES NOT FOUND, RENAMES TEMPORARY OUTPUT FILE TO FINAL OUTPUT FILE
+            # Here we concatenate everything in concat_paths into a single file
+            # Since we previously used temporary placeholder files (temp) and (signed).pdf, we remove them if present
             if concat_paths.__len__() > 1:
                 concatenate_pdfrw(concat_paths, FINAL_OUTPUT_PATH)
                 if os.path.isfile(FILLED_PDF_PATH):
@@ -576,26 +459,47 @@ def generate_err(resume_path="resume.pdf", performance_path="performance.pdf", s
                     os.rename(SIGNED_PDF_PATH, FINAL_OUTPUT_PATH)
                 else:
                     os.rename(FILLED_PDF_PATH, FINAL_OUTPUT_PATH)
+
             if progress_tracker is not None:
-                progress_tracker.emit((i / num_err) * 100)
+                progress_tracker.emit(int((i / num_err) * 100))
+
             print("Processed: " + str(data[1].get("Facility")))
 
     clean_files()
 
 
-# Creates a worker object for the ERR Generator
+# Creates a worker object for the ERR Generator that will later be attached to a separate thread from the UI
 # CREDIT: https://realpython.com/python-pyqt-qthread/
 class ERRWorker(QObject):
     finished = pyqtSignal()
     progress = pyqtSignal(int)
 
-    def __init__(self, resume_path="", performance_path="", signed_43_1_path="", signature_img_path="",
-                 sup_signature_img_path=""):
-        self.resume_path = resume_path
-        self.performance_path = performance_path
-        self.signed_43_1_path = signed_43_1_path
-        self.signature_img_path = signature_img_path
-        self.sup_signature_img_path = sup_signature_img_path
+    def __init__(self, resume_path, performance_path, signed_43_1_path, signature_img_path, sup_signature_img_path):
+
+        if resume_path == '':
+            self.resume_path = RESUME_PATH_
+        else:
+            self.resume_path = resume_path
+
+        if performance_path == '':
+            self.performance_path = PERFORMANCE_PATH_
+        else:
+            self.performance_path = performance_path
+
+        if signed_43_1_path == '':
+            self.signed_43_1_path = SIGNED_3330_43_1_PATH_
+        else:
+            self.signed_43_1_path = signed_43_1_path
+
+        if signature_img_path == '':
+            self.signature_img_path = get_signature()
+        else:
+            self.signature_img_path = signature_img_path
+
+        if sup_signature_img_path == '':
+            self.sup_signature_img_path = get_sup_signature()
+        else:
+            self.sup_signature_img_path = sup_signature_img_path
 
         super(ERRWorker, self).__init__()
 
@@ -606,6 +510,8 @@ class ERRWorker(QObject):
 
 
 class MainWindow(QMainWindow):
+    output_signal = pyqtSignal(str)
+    
     def __init__(self):
         super().__init__()
         self.setup_ui()
@@ -618,7 +524,6 @@ class MainWindow(QMainWindow):
         self.signaturelabel = QLabel("Select signature image: ")
         self.supsignaturelabel = QLabel("Select supervisor's signature image: ")
         self.signed431label = QLabel("Select signed 3330-43-1 page 2 PDF: ")
-        self.label = QLabel("Click to run")
 
         self.performancebutton = QPushButton("Open File")
         self.performancebutton.clicked.connect(self.open_performance_pdf)
@@ -637,8 +542,12 @@ class MainWindow(QMainWindow):
         self.supsignaturelineedit = QLineEdit()
         self.signed431lineedit = QLineEdit()
 
-        self.button = QPushButton("Run")
-        self.button.clicked.connect(self.run_err_generator)
+        self.runlabel = QLabel("Click to run")
+        self.runbutton = QPushButton("Run")
+        self.runbutton.clicked.connect(self.run_err_generator)
+
+        self.outputgroupbox = QGroupBox("Generator output:")
+        self.output = QTextBrowser(self.outputgroupbox)
 
         layout = QGridLayout()
         layout.addWidget(self.performancelabel, 0, 0)
@@ -659,8 +568,10 @@ class MainWindow(QMainWindow):
         layout.addWidget(self.supsignaturebutton, 7, 1)
         layout.addWidget(self.signed431button, 9, 1)
 
-        layout.addWidget(self.label, 10, 0)
-        layout.addWidget(self.button, 10, 1)
+        layout.addWidget(self.runlabel, 10, 0)
+        layout.addWidget(self.runbutton, 10, 1)
+
+        layout.addWidget(self.outputgroupbox, 11, 0, 1, 2)
 
         container = QWidget()
         container.setLayout(layout)
@@ -668,31 +579,35 @@ class MainWindow(QMainWindow):
         self.setCentralWidget(container)
 
     def open_performance_pdf(self):
-        performance_path = QFileDialog.getOpenFileName(self, "Browse", "", "PDF Files (*.pdf)")
+        performance_path = QFileDialog.getOpenFileName(self, "Select Performance Plan PDF", "",
+                                                       "PDF Files (*.pdf);;All Files (*)")
 
         if performance_path:
             self.performancelineedit.setText(performance_path[0])
 
     def open_resume_pdf(self):
-        resume_path = QFileDialog.getOpenFileName(self, "Browse", "", "PDF Files (*.pdf)")
+        resume_path = QFileDialog.getOpenFileName(self, "Select Resume PDF", "", "PDF Files (*.pdf);;All Files (*)")
 
         if resume_path:
             self.resumelineedit.setText(resume_path[0])
 
     def open_431_pdf(self):
-        path_3330_43_1 = QFileDialog.getOpenFileName(self, "Browse", "", "PDF Files (*.pdf)")
+        path_3330_43_1 = QFileDialog.getOpenFileName(self, "Select Signed 3330-43-1 PDF", "",
+                                                     "PDF Files (*.pdf);;All Files (*)")
 
         if path_3330_43_1:
             self.signed431lineedit.setText(path_3330_43_1[0])
 
     def open_signature_image(self):
-        signature_path = QFileDialog.getOpenFileName(self, "Browse", "", "Image Files (*.png, *.jpg)")
+        signature_path = QFileDialog.getOpenFileName(self, "Select Signature Image", "",
+                                                     "Image Files (*.png *.jpg *.jpeg *.gif);;All Files (*)")
 
         if signature_path:
             self.signaturelineedit.setText(signature_path[0])
 
     def open_supsignature_image(self):
-        sup_signature_path = QFileDialog.getOpenFileName(self, "Browse", "", "Image Files (*.png, *.jpg)")
+        sup_signature_path = QFileDialog.getOpenFileName(self, "Select Supervisor's Signature Image", "",
+                                                         "Image Files (*.png *.jpg *.jpeg *.gif);;All Files (*)")
 
         if sup_signature_path:
             self.supsignaturelineedit.setText(sup_signature_path[0])
@@ -716,10 +631,14 @@ class MainWindow(QMainWindow):
 
         self.thread.start()
 
-        self.button.setEnabled(False)
+        self.runbutton.setEnabled(False)
         self.thread.finished.connect(
-            lambda: self.button.setEnabled(True)
+            lambda: self.runbutton.setEnabled(True)
         )
+
+    @pyqtSlot(str)
+    def append_output(self, string):
+        self.output.append(string + '\n')
 
 
 if __name__ == "__main__":
