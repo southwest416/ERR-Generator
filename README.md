@@ -5,7 +5,7 @@ This program automatically generates ERR packages including a Cover letter, 3330
 ## Instructions
 1. Download the [most recent release](https://github.com/southwest416/ERR-Generator/releases).
 
-   - ![Download Page](https://i.imgur.com/3CoKfpm.png)
+   - ![Download Page](https://i.imgur.com/gFM1WXK.png)
 
    - ![Warning](https://i.imgur.com/gbqObwk.png)
 
@@ -13,19 +13,41 @@ This program automatically generates ERR packages including a Cover letter, 3330
    
 2. Extract the archive.
 
-   - ![Extract](https://i.imgur.com/7qGu7tg.png)
+   - ![Extract](https://i.imgur.com/KHK6moJ.png)
    
 3. From the extracted folder, open "1. Personal Information.xlsx" and fill out as fully as possible.
 
    - ![Personal Information](https://i.imgur.com/inxJyYe.png)
    
-   - ![Personal Information 1](https://i.imgur.com/yRKxIku.png)
+   - ![Personal Information 1](https://i.imgur.com/gkVJU82.png)
    
    **Please be sure to fill out work history as well by selecting the "2. Work History" sheet at the bottom of the excel file**
    
    - ![Personal Information Work History](https://i.imgur.com/1xDNKQ9.png)
    
 4. Once complete, save the excel file.
+
+5. Launch ERRPDFfill.exe. Windows may warn that this program is an "unrecognized app" since it is not signed by a typical developer. If so, please select "More Info," then click "Run anyway" to execute.
+
+   - ![Launch ERRPDFFill.exe](https://i.imgur.com/JKnIy6D.png)
+   
+   - ![Windows Warning](https://i.imgur.com/KtCXrEl.png)
+   
+   - ![Run Anyway](https://i.imgur.com/oL1XaG2.png)
+   
+   - ![ERRPDFfill main screen](https://i.imgur.com/FWppIgR.png)
+   
+6. Using the tabs at the top, attach a resume & performance plan, then attach signatures, if desired. 
+
+   - ![ERRPDFfill tabs](https://i.imgur.com/lgsHtom.png)
+   
+   - ![Attach Resume/Performance Plan](https://i.imgur.com/kjraBQG.png)
+   
+   - ![Attach Signatures](https://i.imgur.com/RdQuwM6.png)
+   
+7. Once you have attached all the files you want, use the "Run" button at the bottom to generate your ERRs.
+
+   - ![Run Generator](https://i.imgur.com/f0s0R7P.png)
 
 5. Download your performance plan PDF from the [FAA PMAS website](https://pmas.faa.gov). **Rename to "performance.pdf" and save to ERR Generator directory.**
 
