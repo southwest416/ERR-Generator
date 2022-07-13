@@ -470,75 +470,79 @@ class ERRWorker(QObject):
 
         _generate_signature_watermark_files(signature_img_path, sup_signature_img_path)
 
-        data_xls = pd.ExcelFile(DATA_SPREADSHEET_PATH, engine="openpyxl")
-        data_backend = data_xls.parse("Backend", header=None, index_col=0, usecols="A,B").fillna('').to_dict()
+        if os.path.isfile(DATA_SPREADSHEET_PATH):
+            data_xls = pd.ExcelFile(DATA_SPREADSHEET_PATH, engine="openpyxl")
+            data_backend = data_xls.parse("Backend", header=None, index_col=0, usecols="A,B").fillna('').to_dict()
 
-        if not os.path.exists(OUTPUT_DIRECTORY):
-            os.mkdir(OUTPUT_DIRECTORY)
-        if not os.path.exists(RESOURCE_DIRECTORY):
-            os.mkdir(RESOURCE_DIRECTORY)
+            if not os.path.exists(OUTPUT_DIRECTORY):
+                os.mkdir(OUTPUT_DIRECTORY)
+            if not os.path.exists(RESOURCE_DIRECTORY):
+                os.mkdir(RESOURCE_DIRECTORY)
 
-        # Excel document supports maximum 20 ERRs at once
-        num_err = 0
-        for i in range(1, 21):
-            if data_backend[1].get("Facility" + str(i)):
-                num_err = i
+            # Excel document supports maximum 20 ERRs at once
+            num_err = 0
+            for i in range(1, 21):
+                if data_backend[1].get("Facility" + str(i)):
+                    num_err = i
 
-        if num_err == 0:
-            sys.stderr.write(
-                "ERROR: No desired facilities found. Please verify you have filled out 1. Personal Information.xlsx\n")
-            self.status.emit(
-                "ERROR: No desired facilities found. Please verify you have filled out 1. Personal Information.xlsx")
+            if num_err == 0:
+                sys.stderr.write(
+                    "ERROR: No desired facilities found. Please verify you have filled out 1. Personal Information.xlsx\n")
+                self.status.emit(
+                    "ERROR: No desired facilities found. Please verify you have filled out 1. Personal Information.xlsx")
 
-        for i in range(1, num_err + 1):
-            if data_backend[1].get("Facility" + str(i)):
+            for i in range(1, num_err + 1):
+                if data_backend[1].get("Facility" + str(i)):
 
-                data = data_xls.parse("PDFKeys" + str(i), header=None, index_col=0).fillna('').to_dict()
+                    data = data_xls.parse("PDFKeys" + str(i), header=None, index_col=0).fillna('').to_dict()
 
-                # Each path represents a "step" in the generation, package will be filled first, then signed, then finalized
-                FILLED_PDF_PATH = OUTPUT_DIRECTORY + "\\" + str(data[1].get("Facility")) + "(temp).pdf"
-                SIGNED_PDF_PATH = OUTPUT_DIRECTORY + "\\" + str(data[1].get("Facility")) + "(signed).pdf"
-                FINAL_OUTPUT_PATH = OUTPUT_DIRECTORY + "\\" + str(data[1].get("Facility")) + ".pdf"
+                    # Each path represents a "step" in the generation, package will be filled first, then signed, then finalized
+                    FILLED_PDF_PATH = OUTPUT_DIRECTORY + "\\" + str(data[1].get("Facility")) + "(temp).pdf"
+                    SIGNED_PDF_PATH = OUTPUT_DIRECTORY + "\\" + str(data[1].get("Facility")) + "(signed).pdf"
+                    FINAL_OUTPUT_PATH = OUTPUT_DIRECTORY + "\\" + str(data[1].get("Facility")) + ".pdf"
 
-                single_form_fill(EMPTY_PDF_PATH, data[1], FILLED_PDF_PATH)
-                _insert_signatures(FILLED_PDF_PATH, SIGNED_PDF_PATH, signed_43_1_path)
+                    single_form_fill(EMPTY_PDF_PATH, data[1], FILLED_PDF_PATH)
+                    _insert_signatures(FILLED_PDF_PATH, SIGNED_PDF_PATH, signed_43_1_path)
 
-                # concat_paths represents the structure of an ERR package
-                # We start with the filled/signed portion including Cover letter, 3330-42, and 3330-43-1
-                # Then we attach a resume, then a performance plan, in that order
-                if os.path.isfile(SIGNED_PDF_PATH):
-                    concat_paths = [SIGNED_PDF_PATH]
-                else:
-                    concat_paths = [FILLED_PDF_PATH]
-
-                if os.path.isfile(resume_path):
-                    concat_paths.append(resume_path)
-                if os.path.isfile(performance_path):
-                    concat_paths.append(performance_path)
-
-                # Here we concatenate everything in concat_paths into a single file
-                # Since we previously used temporary placeholder files (temp) and (signed).pdf, we remove them if present
-                if concat_paths.__len__() > 1:
-                    concatenate_pdfrw(concat_paths, FINAL_OUTPUT_PATH)
-                    if os.path.isfile(FILLED_PDF_PATH):
-                        os.remove(FILLED_PDF_PATH)
+                    # concat_paths represents the structure of an ERR package
+                    # We start with the filled/signed portion including Cover letter, 3330-42, and 3330-43-1
+                    # Then we attach a resume, then a performance plan, in that order
                     if os.path.isfile(SIGNED_PDF_PATH):
-                        os.remove(SIGNED_PDF_PATH)
-                else:
-                    if os.path.isfile(FINAL_OUTPUT_PATH):
-                        os.remove(FINAL_OUTPUT_PATH)
-                    if os.path.isfile(SIGNED_PDF_PATH):
-                        os.rename(SIGNED_PDF_PATH, FINAL_OUTPUT_PATH)
+                        concat_paths = [SIGNED_PDF_PATH]
+                    else:
+                        concat_paths = [FILLED_PDF_PATH]
+
+                    if os.path.isfile(resume_path):
+                        concat_paths.append(resume_path)
+                    if os.path.isfile(performance_path):
+                        concat_paths.append(performance_path)
+
+                    # Here we concatenate everything in concat_paths into a single file
+                    # Since we previously used temporary placeholder files (temp) and (signed).pdf, we remove them if present
+                    if concat_paths.__len__() > 1:
+                        concatenate_pdfrw(concat_paths, FINAL_OUTPUT_PATH)
                         if os.path.isfile(FILLED_PDF_PATH):
                             os.remove(FILLED_PDF_PATH)
+                        if os.path.isfile(SIGNED_PDF_PATH):
+                            os.remove(SIGNED_PDF_PATH)
                     else:
-                        os.rename(FILLED_PDF_PATH, FINAL_OUTPUT_PATH)
+                        if os.path.isfile(FINAL_OUTPUT_PATH):
+                            os.remove(FINAL_OUTPUT_PATH)
+                        if os.path.isfile(SIGNED_PDF_PATH):
+                            os.rename(SIGNED_PDF_PATH, FINAL_OUTPUT_PATH)
+                            if os.path.isfile(FILLED_PDF_PATH):
+                                os.remove(FILLED_PDF_PATH)
+                        else:
+                            os.rename(FILLED_PDF_PATH, FINAL_OUTPUT_PATH)
 
-                self.status.emit("Processed: " + str(data[1].get("Facility")))
-                self.progress.emit(int(100 * (i / num_err)))
-                print("Processed: " + str(data[1].get("Facility")))
+                    self.status.emit("Processed: " + str(data[1].get("Facility")))
+                    self.progress.emit(int(100 * (i / num_err)))
+                    print("Processed: " + str(data[1].get("Facility")))
 
-        _clean_files()
+            _clean_files()
+        else:
+            sys.stderr.write("ERROR: 1. Personal Information.xlsx not found! Aborting!")
+            self.status.emit("ERROR: 1. Personal Information.xlsx not found! Aborting!")
 
     def run(self):
         # Initialization errors cannot be printed during initialization because we don't connect the status signal to
