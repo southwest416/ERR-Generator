@@ -479,9 +479,16 @@ class ERRWorker(QObject):
             os.mkdir(RESOURCE_DIRECTORY)
 
         # Excel document supports maximum 20 ERRs at once
+        num_err = 0
         for i in range(1, 21):
             if data_backend[1].get("Facility" + str(i)):
                 num_err = i
+
+        if num_err == 0:
+            sys.stderr.write(
+                "ERROR: No desired facilities found. Please verify you have filled out 1. Personal Information.xlsx\n")
+            self.status.emit(
+                "ERROR: No desired facilities found. Please verify you have filled out 1. Personal Information.xlsx")
 
         for i in range(1, num_err + 1):
             if data_backend[1].get("Facility" + str(i)):
