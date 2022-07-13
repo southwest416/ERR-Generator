@@ -7,6 +7,8 @@ import reportlab.lib.pagesizes
 from reportlab.pdfgen import canvas
 from PyPDF2 import PdfFileWriter, PdfFileReader
 from PyPDF2.generic import BooleanObject, NameObject, IndirectObject
+from gui.MainWindow import Ui_MainWindow
+from gui.Disclaimer import Ui_DisclaimerDialog
 
 from PyQt6.QtGui import *
 from PyQt6.QtCore import *
@@ -280,27 +282,10 @@ def pypdf_set_need_appearances_writer(writer: PdfFileWriter):
         return writer
 
 
-def get_signature():
-    if os.path.isfile('signature.png'):
-        return 'signature.png'
-    elif os.path.isfile('signature.jpg'):
-        return 'signature.jpg'
-    return ''
-
-
-def get_sup_signature():
-    if os.path.isfile('supsignature.png'):
-        return 'supsignature.png'
-    elif os.path.isfile('supsignature.jpg'):
-        return 'supsignature.jpg'
-    return ''
-
-
 # Creates "watermark" PDFs that are empty PDFs with signatures drawn that will later be overlaid on filled pages
 # This function is run early as it is only necessary to run once per program execution, not once per package
 # CREDIT: https://stackoverflow.com/questions/2925484/place-image-over-pdf
-def generate_signature_watermark_files(signature_path, sup_signature_path):
-
+def _generate_signature_watermark_files(signature_path, sup_signature_path):
     if signature_path != '':
         canvas_cover = canvas.Canvas(WATERMARK_FILE_COVER_LETTER, pagesize=reportlab.lib.pagesizes.letter)
         canvas_cover.drawImage(signature_path, 72, 330, height=36, preserveAspectRatio=True, anchor='sw')
@@ -326,8 +311,7 @@ def generate_signature_watermark_files(signature_path, sup_signature_path):
 
 # Overlays signature watermark files onto each page or inserts signed page in place of generated page as necessary
 # CREDIT: https://stackoverflow.com/questions/2925484/place-image-over-pdf
-def insert_signatures(form_path, output_path, signed_3330_43_1_path):
-
+def _insert_signatures(form_path, output_path, signed_3330_43_1_path):
     watermark_cover_letter_exists = os.path.isfile(WATERMARK_FILE_COVER_LETTER)
     watermark_42_exists = os.path.isfile(WATERMARK_FILE_42)
     watermark_43_exists = os.path.isfile(WATERMARK_FILE_43)
@@ -391,7 +375,7 @@ def insert_signatures(form_path, output_path, signed_3330_43_1_path):
             signed_3330_43_1_file.stream.close()
 
 
-def clean_files():
+def _clean_files():
     if os.path.isfile(RESOURCE_DIRECTORY + '\\42watermark.pdf'):
         os.remove(RESOURCE_DIRECTORY + '\\42watermark.pdf')
     if os.path.isfile(RESOURCE_DIRECTORY + '\\43watermark.pdf'):
@@ -400,226 +384,247 @@ def clean_files():
         os.remove(RESOURCE_DIRECTORY + '\\coverwatermark.pdf')
 
 
-def generate_err(resume_path, performance_path, signed_43_1_path, signature_img_path, sup_signature_img_path,
-                 progress_tracker=None):
-
-    generate_signature_watermark_files(signature_img_path, sup_signature_img_path)
-
-    data_xls = pd.ExcelFile(DATA_SPREADSHEET_PATH, engine="openpyxl")
-    data_backend = data_xls.parse("Backend", header=None, index_col=0, usecols="A,B").fillna('').to_dict()
-
-    if not os.path.exists(OUTPUT_DIRECTORY):
-        os.mkdir(OUTPUT_DIRECTORY)
-    if not os.path.exists(RESOURCE_DIRECTORY):
-        os.mkdir(RESOURCE_DIRECTORY)
-
-    # Excel document supports maximum 20 ERRs at once
-    for i in range(1, 21):
-        if data_backend[1].get("Facility" + str(i)):
-            num_err = i
-
-    for i in range(1, num_err + 1):
-        if data_backend[1].get("Facility" + str(i)):
-
-            data = data_xls.parse("PDFKeys" + str(i), header=None, index_col=0).fillna('').to_dict()
-
-            # Each path represents a "step" in the generation, package will be filled first, then signed, then finalized
-            FILLED_PDF_PATH = OUTPUT_DIRECTORY + "\\" + str(data[1].get("Facility")) + "(temp).pdf"
-            SIGNED_PDF_PATH = OUTPUT_DIRECTORY + "\\" + str(data[1].get("Facility")) + "(signed).pdf"
-            FINAL_OUTPUT_PATH = OUTPUT_DIRECTORY + "\\" + str(data[1].get("Facility")) + ".pdf"
-
-            single_form_fill(EMPTY_PDF_PATH, data[1], FILLED_PDF_PATH)
-            insert_signatures(FILLED_PDF_PATH, SIGNED_PDF_PATH, signed_43_1_path)
-
-            # concat_paths represents the structure of an ERR package
-            # We start with the filled/signed portion including Cover letter, 3330-42, and 3330-43-1
-            # Then we attach a resume, then a performance plan, in that order
-            if os.path.isfile(SIGNED_PDF_PATH):
-                concat_paths = [SIGNED_PDF_PATH]
-            else:
-                concat_paths = [FILLED_PDF_PATH]
-
-            if os.path.isfile(resume_path):
-                concat_paths.append(resume_path)
-            if os.path.isfile(performance_path):
-                concat_paths.append(performance_path)
-
-            # Here we concatenate everything in concat_paths into a single file
-            # Since we previously used temporary placeholder files (temp) and (signed).pdf, we remove them if present
-            if concat_paths.__len__() > 1:
-                concatenate_pdfrw(concat_paths, FINAL_OUTPUT_PATH)
-                if os.path.isfile(FILLED_PDF_PATH):
-                    os.remove(FILLED_PDF_PATH)
-                if os.path.isfile(SIGNED_PDF_PATH):
-                    os.remove(SIGNED_PDF_PATH)
-            else:
-                if os.path.isfile(FINAL_OUTPUT_PATH):
-                    os.remove(FINAL_OUTPUT_PATH)
-                if os.path.isfile(SIGNED_PDF_PATH):
-                    os.rename(SIGNED_PDF_PATH, FINAL_OUTPUT_PATH)
-                else:
-                    os.rename(FILLED_PDF_PATH, FINAL_OUTPUT_PATH)
-
-            if progress_tracker is not None:
-                progress_tracker.emit(int((i / num_err) * 100))
-
-            print("Processed: " + str(data[1].get("Facility")))
-
-    clean_files()
-
-
 # Creates a worker object for the ERR Generator that will later be attached to a separate thread from the UI
 # CREDIT: https://realpython.com/python-pyqt-qthread/
 class ERRWorker(QObject):
     finished = pyqtSignal()
     progress = pyqtSignal(int)
+    status = pyqtSignal(str)
 
     def __init__(self, resume_path, performance_path, signed_43_1_path, signature_img_path, sup_signature_img_path):
 
-        if resume_path == '':
+        super(ERRWorker, self).__init__()
+
+        # Initialization errors cannot be printed during initialization because we don't connect the status signal to
+        # the ui's progress_output slot until after initialization is complete. Therefore, we store all errors in
+        # this init_errors list and print the list when we call ERRWorker.run().
+        self.init_errors = []
+
+        # PATH ERROR CHECKING
+        # If the path provided is blank, invalid, or a directory, revert to defaults
+        # If the path provided is filled, but invalid or a directory, display an error
+        # If the path provided is filled and valid, use it
+        # We use this approach for each path to avoid repeating code, but readability is not great
+        if resume_path == '' or os.path.isdir(resume_path) or not os.path.isfile(resume_path):
             self.resume_path = RESUME_PATH_
+        if resume_path != '' and (os.path.isdir(resume_path) or not os.path.isfile(resume_path)):
+            self.init_errors.append("ERROR: The path specified for Resume: " + resume_path
+                                    + " is invalid and will not be used. Reverting to default...")
         else:
             self.resume_path = resume_path
 
-        if performance_path == '':
+        if performance_path == '' or os.path.isdir(performance_path) or not os.path.isfile(performance_path):
             self.performance_path = PERFORMANCE_PATH_
+        if performance_path != '' and (os.path.isdir(performance_path) or not os.path.isfile(performance_path)):
+            self.init_errors.append("ERROR: The path specified for Performance Plan: " + performance_path
+                                    + " is invalid and will not be used. Reverting to default...")
         else:
             self.performance_path = performance_path
 
-        if signed_43_1_path == '':
+        if signed_43_1_path == '' or os.path.isdir(signed_43_1_path) or not os.path.isfile(signed_43_1_path):
             self.signed_43_1_path = SIGNED_3330_43_1_PATH_
+        if signed_43_1_path != '' and (os.path.isdir(signed_43_1_path) or not os.path.isfile(signed_43_1_path)):
+            self.init_errors.append("ERROR: The path specified for Signed 3330-43-1 page 2: " + signed_43_1_path
+                                        + " is invalid and will not be used. Reverting to default...")
         else:
             self.signed_43_1_path = signed_43_1_path
 
-        if signature_img_path == '':
-            self.signature_img_path = get_signature()
+        if signature_img_path == '' or os.path.isdir(signature_img_path) or not os.path.isfile(signature_img_path):
+            if os.path.isfile('signature.png'):
+                self.signature_img_path = 'signature.png'
+            elif os.path.isfile('signature.jpg'):
+                self.signature_img_path = 'signature.jpg'
+            else:
+                self.signature_img_path = ''
+        if signature_img_path != '' and (os.path.isdir(signature_img_path) or not os.path.isfile(signature_img_path)):
+            self.init_errors.append("ERROR: The path specified for Signature Image: " + signature_img_path
+                                    + " is invalid and will not be used. Reverting to default...")
         else:
             self.signature_img_path = signature_img_path
 
-        if sup_signature_img_path == '':
-            self.sup_signature_img_path = get_sup_signature()
+        if sup_signature_img_path == '' or os.path.isdir(sup_signature_img_path) \
+                or not os.path.isfile(sup_signature_img_path):
+            if os.path.isfile('supsignature.png'):
+                self.sup_signature_img_path = 'supsignature.png'
+            elif os.path.isfile('supsignature.jpg'):
+                self.sup_signature_img_path = 'supsignature.jpg'
+            else:
+                self.sup_signature_img_path = ''
+        if sup_signature_img_path != '' and \
+                (os.path.isdir(sup_signature_img_path) or not os.path.isfile(sup_signature_img_path)):
+            self.init_errors.append("ERROR: The path specified for Supervisor's Signature Image: " +
+                                    sup_signature_img_path +
+                                    " is invalid and will not be used. Reverting to default...")
         else:
             self.sup_signature_img_path = sup_signature_img_path
 
-        super(ERRWorker, self).__init__()
+    def print_init_errors(self):
+        for error_string in self.init_errors:
+            self.status.emit(error_string)
+            sys.stderr.write(error_string + "\n")
+
+    # This was originally a static function but now part of ERRWorker class
+    # This was moved to allow the function to emit a pyqtSignal(str) that can be received by MainWindow.print_status
+    # slot and output to a console in the UI.
+    def generate_err(self, resume_path, performance_path, signed_43_1_path, signature_img_path, sup_signature_img_path):
+
+        _generate_signature_watermark_files(signature_img_path, sup_signature_img_path)
+
+        data_xls = pd.ExcelFile(DATA_SPREADSHEET_PATH, engine="openpyxl")
+        data_backend = data_xls.parse("Backend", header=None, index_col=0, usecols="A,B").fillna('').to_dict()
+
+        if not os.path.exists(OUTPUT_DIRECTORY):
+            os.mkdir(OUTPUT_DIRECTORY)
+        if not os.path.exists(RESOURCE_DIRECTORY):
+            os.mkdir(RESOURCE_DIRECTORY)
+
+        # Excel document supports maximum 20 ERRs at once
+        for i in range(1, 21):
+            if data_backend[1].get("Facility" + str(i)):
+                num_err = i
+
+        for i in range(1, num_err + 1):
+            if data_backend[1].get("Facility" + str(i)):
+
+                data = data_xls.parse("PDFKeys" + str(i), header=None, index_col=0).fillna('').to_dict()
+
+                # Each path represents a "step" in the generation, package will be filled first, then signed, then finalized
+                FILLED_PDF_PATH = OUTPUT_DIRECTORY + "\\" + str(data[1].get("Facility")) + "(temp).pdf"
+                SIGNED_PDF_PATH = OUTPUT_DIRECTORY + "\\" + str(data[1].get("Facility")) + "(signed).pdf"
+                FINAL_OUTPUT_PATH = OUTPUT_DIRECTORY + "\\" + str(data[1].get("Facility")) + ".pdf"
+
+                single_form_fill(EMPTY_PDF_PATH, data[1], FILLED_PDF_PATH)
+                _insert_signatures(FILLED_PDF_PATH, SIGNED_PDF_PATH, signed_43_1_path)
+
+                # concat_paths represents the structure of an ERR package
+                # We start with the filled/signed portion including Cover letter, 3330-42, and 3330-43-1
+                # Then we attach a resume, then a performance plan, in that order
+                if os.path.isfile(SIGNED_PDF_PATH):
+                    concat_paths = [SIGNED_PDF_PATH]
+                else:
+                    concat_paths = [FILLED_PDF_PATH]
+
+                if os.path.isfile(resume_path):
+                    concat_paths.append(resume_path)
+                if os.path.isfile(performance_path):
+                    concat_paths.append(performance_path)
+
+                # Here we concatenate everything in concat_paths into a single file
+                # Since we previously used temporary placeholder files (temp) and (signed).pdf, we remove them if present
+                if concat_paths.__len__() > 1:
+                    concatenate_pdfrw(concat_paths, FINAL_OUTPUT_PATH)
+                    if os.path.isfile(FILLED_PDF_PATH):
+                        os.remove(FILLED_PDF_PATH)
+                    if os.path.isfile(SIGNED_PDF_PATH):
+                        os.remove(SIGNED_PDF_PATH)
+                else:
+                    if os.path.isfile(FINAL_OUTPUT_PATH):
+                        os.remove(FINAL_OUTPUT_PATH)
+                    if os.path.isfile(SIGNED_PDF_PATH):
+                        os.rename(SIGNED_PDF_PATH, FINAL_OUTPUT_PATH)
+                        if os.path.isfile(FILLED_PDF_PATH):
+                            os.remove(FILLED_PDF_PATH)
+                    else:
+                        os.rename(FILLED_PDF_PATH, FINAL_OUTPUT_PATH)
+
+                self.status.emit("Processed: " + str(data[1].get("Facility")))
+                self.progress.emit(int(100 * (i / num_err)))
+                print("Processed: " + str(data[1].get("Facility")))
+
+        _clean_files()
 
     def run(self):
-        generate_err(self.resume_path, self.performance_path, self.signed_43_1_path, self.signature_img_path,
-                     self.sup_signature_img_path, self.progress)
+        # Initialization errors cannot be printed during initialization because we don't connect the status signal to
+        # the ui's progress_output slot until after initialization is complete. Therefore, we allow initialization to
+        # complete, log all errors, then output them just prior to runtime
+        self.print_init_errors()
+
+        self.generate_err(self.resume_path, self.performance_path, self.signed_43_1_path, self.signature_img_path,
+                          self.sup_signature_img_path)
         self.finished.emit()
 
 
-class MainWindow(QMainWindow):
-    output_signal = pyqtSignal(str)
-    
+class MainWindow(QMainWindow, Ui_MainWindow):
+    terms_accepted = False
+
     def __init__(self):
-        super().__init__()
-        self.setup_ui()
+        super(MainWindow, self).__init__()
+        self.setupUi(self)
 
-    def setup_ui(self):
-        self.setWindowTitle("ERR Generator")
+        self.run_button.clicked.connect(self.run_err_generator)
 
-        self.performancelabel = QLabel("Select a performance plan PDF: ")
-        self.resumelabel = QLabel("Select a resume PDF: ")
-        self.signaturelabel = QLabel("Select signature image: ")
-        self.supsignaturelabel = QLabel("Select supervisor's signature image: ")
-        self.signed431label = QLabel("Select signed 3330-43-1 page 2 PDF: ")
-
-        self.performancebutton = QPushButton("Open File")
-        self.performancebutton.clicked.connect(self.open_performance_pdf)
-        self.resumebutton = QPushButton("Open File")
-        self.resumebutton.clicked.connect(self.open_resume_pdf)
-        self.signaturebutton = QPushButton("Open File")
-        self.signaturebutton.clicked.connect(self.open_signature_image)
-        self.supsignaturebutton = QPushButton("Open File")
-        self.supsignaturebutton.clicked.connect(self.open_supsignature_image)
-        self.signed431button = QPushButton("Open File")
-        self.signed431button.clicked.connect(self.open_431_pdf)
-
-        self.performancelineedit = QLineEdit()
-        self.resumelineedit = QLineEdit()
-        self.signaturelineedit = QLineEdit()
-        self.supsignaturelineedit = QLineEdit()
-        self.signed431lineedit = QLineEdit()
-
-        self.runlabel = QLabel("Click to run")
-        self.runbutton = QPushButton("Run")
-        self.runbutton.clicked.connect(self.run_err_generator)
-
-        self.outputgroupbox = QGroupBox("Generator output:")
-        self.output = QTextBrowser(self.outputgroupbox)
-
-        layout = QGridLayout()
-        layout.addWidget(self.performancelabel, 0, 0)
-        layout.addWidget(self.resumelabel, 2, 0)
-        layout.addWidget(self.signaturelabel, 4, 0)
-        layout.addWidget(self.supsignaturelabel, 6, 0)
-        layout.addWidget(self.signed431label, 8, 0)
-
-        layout.addWidget(self.performancelineedit, 1, 0)
-        layout.addWidget(self.resumelineedit, 3, 0)
-        layout.addWidget(self.signaturelineedit, 5, 0)
-        layout.addWidget(self.supsignaturelineedit, 7, 0)
-        layout.addWidget(self.signed431lineedit, 9, 0)
-
-        layout.addWidget(self.performancebutton, 1, 1)
-        layout.addWidget(self.resumebutton, 3, 1)
-        layout.addWidget(self.signaturebutton, 5, 1)
-        layout.addWidget(self.supsignaturebutton, 7, 1)
-        layout.addWidget(self.signed431button, 9, 1)
-
-        layout.addWidget(self.runlabel, 10, 0)
-        layout.addWidget(self.runbutton, 10, 1)
-
-        layout.addWidget(self.outputgroupbox, 11, 0, 1, 2)
-
-        container = QWidget()
-        container.setLayout(layout)
-
-        self.setCentralWidget(container)
+        self.resume_browse.clicked.connect(self.open_resume_pdf)
+        self.performance_browse.clicked.connect(self.open_performance_pdf)
+        self.signature_browse.clicked.connect(self.open_signature_image)
+        self.sup_signature_browse.clicked.connect(self.open_sup_signature_image)
+        self.signed_43_1_browse.clicked.connect(self.open_43_1_pdf)
 
     def open_performance_pdf(self):
         performance_path = QFileDialog.getOpenFileName(self, "Select Performance Plan PDF", "",
                                                        "PDF Files (*.pdf);;All Files (*)")
-
-        if performance_path:
-            self.performancelineedit.setText(performance_path[0])
+        self.performance_line_edit.setText(performance_path[0])
 
     def open_resume_pdf(self):
         resume_path = QFileDialog.getOpenFileName(self, "Select Resume PDF", "", "PDF Files (*.pdf);;All Files (*)")
+        self.resume_line_edit.setText(resume_path[0])
 
-        if resume_path:
-            self.resumelineedit.setText(resume_path[0])
+    def open_43_1_pdf(self):
+        # We declare the variable here as None because the user may choose to not accept the terms in DisclaimerDialog.
+        # This results in a "referencing local variable before declaration" error when we try to setText at the end
+        path_3330_43_1 = None
+        if not self.terms_accepted:
+            disclaimer_dialog = DisclaimerDialog()
+            disclaimer_dialog.buttonBox.accepted.connect(self.set_terms_accepted_true)
+            disclaimer_dialog.buttonBox.rejected.connect(self.set_terms_accepted_false)
+            disclaimer_dialog.exec()
 
-    def open_431_pdf(self):
-        path_3330_43_1 = QFileDialog.getOpenFileName(self, "Select Signed 3330-43-1 PDF", "",
-                                                     "PDF Files (*.pdf);;All Files (*)")
+        if self.terms_accepted:
+            path_3330_43_1 = QFileDialog.getOpenFileName(self, "Select Signed 3330-43-1 PDF", "",
+                                                         "PDF Files (*.pdf);;All Files (*)")
 
-        if path_3330_43_1:
-            self.signed431lineedit.setText(path_3330_43_1[0])
+        if path_3330_43_1 is not None:
+            self.signed_43_1_line_edit.setText(path_3330_43_1[0])
 
     def open_signature_image(self):
         signature_path = QFileDialog.getOpenFileName(self, "Select Signature Image", "",
                                                      "Image Files (*.png *.jpg *.jpeg *.gif);;All Files (*)")
 
-        if signature_path:
-            self.signaturelineedit.setText(signature_path[0])
+        self.signature_line_edit.setText(signature_path[0])
 
-    def open_supsignature_image(self):
-        sup_signature_path = QFileDialog.getOpenFileName(self, "Select Supervisor's Signature Image", "",
-                                                         "Image Files (*.png *.jpg *.jpeg *.gif);;All Files (*)")
+    def open_sup_signature_image(self):
+        # We declare the variable here as None because the user may choose to not accept the terms in DisclaimerDialog.
+        # This results in a "referencing local variable before declaration" error when we try to setText at the end
+        sup_signature_path = None
+        if not self.terms_accepted:
+            disclaimer_dialog = DisclaimerDialog()
+            disclaimer_dialog.buttonBox.accepted.connect(self.set_terms_accepted_true)
+            disclaimer_dialog.buttonBox.rejected.connect(self.set_terms_accepted_false)
+            disclaimer_dialog.exec()
 
-        if sup_signature_path:
-            self.supsignaturelineedit.setText(sup_signature_path[0])
+        if self.terms_accepted:
+            sup_signature_path = QFileDialog.getOpenFileName(self, "Select Supervisor's Signature Image", "",
+                                                             "Image Files (*.png *.jpg *.jpeg *.gif);;All Files (*)")
 
-    def report_progress(self):
-        pass
+        if sup_signature_path is not None:
+            self.sup_signature_line_edit.setText(sup_signature_path[0])
+
+    def report_progress(self, progress):
+        self.progress_bar.setValue(progress)
+
+    def print_status(self, string):
+        self.progress_output.append(string)
+
+    def set_terms_accepted_true(self):
+        self.terms_accepted = True
+
+    def set_terms_accepted_false(self):
+        self.terms_accepted = False
 
     def run_err_generator(self):
         self.thread = QThread()
-        self.worker = ERRWorker(self.resumelineedit.text(), self.performancelineedit.text(),
-                                self.signed431lineedit.text(), self.signaturelineedit.text(),
-                                self.supsignaturelineedit.text())
+        self.worker = ERRWorker(self.resume_line_edit.text(), self.performance_line_edit.text(),
+                                self.signed_43_1_line_edit.text(), self.signature_line_edit.text(),
+                                self.sup_signature_line_edit.text())
 
         self.worker.moveToThread(self.thread)
 
@@ -628,17 +633,24 @@ class MainWindow(QMainWindow):
         self.worker.finished.connect(self.worker.deleteLater)
         self.thread.finished.connect(self.thread.deleteLater)
         self.worker.progress.connect(self.report_progress)
+        self.worker.status.connect(self.print_status)
 
         self.thread.start()
 
-        self.runbutton.setEnabled(False)
+        self.run_button.setEnabled(False)
         self.thread.finished.connect(
-            lambda: self.runbutton.setEnabled(True)
+            lambda: self.run_button.setEnabled(True)
         )
 
-    @pyqtSlot(str)
-    def append_output(self, string):
-        self.output.append(string + '\n')
+
+class DisclaimerDialog(QDialog, Ui_DisclaimerDialog):
+    def __init__(self):
+        super(DisclaimerDialog, self).__init__()
+        self.setupUi(self)
+
+        self.ok_button = self.buttonBox.button(QDialogButtonBox.StandardButton.Ok)
+        self.ok_button.setEnabled(False)
+        self.checkBox.toggled.connect(self.ok_button.setEnabled)
 
 
 if __name__ == "__main__":
