@@ -54,6 +54,8 @@ Your performance plan can be found at https://pmas.faa.gov.
 8. This will generate a folder "Filled ERRs". Open this folder to view your completed ERR packages. You can then view and print the generated documents from Microsoft Edge, Google Chrome, or Adobe Acrobat. 
 **Please do not print from Mozilla Firefox as it will not function properly when attempting to print.**
 
+   - ![Filled ERRs Folder](https://i.imgur.com/W0nStGa.png)
+
 9. Review each package THOROUGHLY, especially if your current or desired facility has undergone a change recently such as a change of type, level, etc.
 
 10. If you did not attach signatures earlier, sign the cover letter, 3330-42 (page 2), and 3330-43-1 (page 5), and have a supervisor or manager sign 3330-43-1 under "Signature of Rating Official."
