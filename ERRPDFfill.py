@@ -541,7 +541,7 @@ class ERRWorker(QObject):
 
             _clean_files()
         else:
-            sys.stderr.write("ERROR: 1. Personal Information.xlsx not found! Aborting!")
+            sys.stderr.write("ERROR: 1. Personal Information.xlsx not found! Aborting!\n")
             self.status.emit("ERROR: 1. Personal Information.xlsx not found! Aborting!")
 
     def run(self):
