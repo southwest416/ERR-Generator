@@ -1,5 +1,6 @@
 import os
 import sys
+import traceback
 
 import pdfrw
 import pandas as pd
@@ -579,7 +580,12 @@ class ERRWorker(QObject):
         # complete, log all errors, then output them just prior to runtime
         self.print_init_errors()
 
-        self.generate_err(self.resume_path, self.performance_path, self.signed_43_1_path, self.signature_img_path)
+        try:
+            self.generate_err(self.resume_path, self.performance_path, self.signed_43_1_path, self.signature_img_path)
+        except Exception as e:
+            self.status.emit(str(e))
+            traceback.print_exc()
+
         self.finished.emit()
 
 
