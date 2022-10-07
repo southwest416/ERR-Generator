@@ -5,7 +5,7 @@ This program automatically generates ERR packages including a Cover letter, 3330
 ## Instructions
 1. Download the [most recent release](https://github.com/southwest416/ERR-Generator/releases).
 
-   - ![Download Page](https://i.imgur.com/gFM1WXK.png)
+   - ![Download Page](https://i.imgur.com/XmhZHnN.png)
 
    - ![Warning](https://i.imgur.com/gbqObwk.png)
 
@@ -19,7 +19,7 @@ This program automatically generates ERR packages including a Cover letter, 3330
    
    - ![Personal Information 1](https://i.imgur.com/gkVJU82.png)
    
-   **Please be sure to fill out work history as well by selecting the "2. Work History" sheet at the bottom of the excel file**
+   **Please be sure to fill out work history as well by selecting the "2. Work History" sheet at the bottom of the excel file** If you are submitting an application to a USAJOBS announcement, also fill out sheet "1b. USAJOBS Announcement".
    
    - ![Personal Information Work History](https://i.imgur.com/1xDNKQ9.png)
    
@@ -42,19 +42,18 @@ Your performance plan can be found at https://pmas.faa.gov.
    
    - ![Attach Resume/Performance Plan](https://i.imgur.com/kjraBQG.png)
    
-   - ![Attach Signatures](https://i.imgur.com/RdQuwM6.png)
+   - ![Attach Signatures](https://i.imgur.com/BMZsJkS.png)
 
-6a. When attaching signatures, either attach an image of your signature and a supervisors signature, or attach an image of your signature and a signed 3330-43-1 page 2 ONLY. 
-**USE THIS FUNCTION AT YOUR OWN RISK AND ONLY IF YOU HAVE EXPRESS PERMISSION FROM YOUR SUPERVISOR. DUPLICATING SOMEONE ELSES SIGNATURE OR REUSING A SIGNED DOCUMENT MAY BE A VIOLATION OF POLICY, LAW, OR REGULATION. IT IS YOUR RESPONSIBILITY TO BE AWARE OF ANY POLICY, LAW, OR REGULATION GOVERNING USE OF THIS FUNCTION. THE CREATOR OF THIS PROGRAM ASSUMES NO LIABILITY FOR USE OF THIS FUNCTION OR ANY OTHER FUNCTION PROVIDED BY THIS SOFTWARE.**
+6a. When attaching signatures, it is recommended to attach both an image of your signature and a signed 3330-43-1 page, if desired. If you attach a signed 3330-43-1 page 2, please double check it is filled out completely and correctly prior to attaching, as the generator will not attempt to fill any fields on this document once attached. **Do NOT attach a 3330-43-1 page 2 that has already been signed by a rating official, as reusing a document signed by someone else may be a violation of policy, law, or regulation. Only attach a page that has been signed by you, and nobody else.**
    
 7. Once you have attached all the files you want, use the "Run" button at the bottom to generate your ERRs.
 
    - ![Run Generator](https://i.imgur.com/f0s0R7P.png)
 
-8. This will generate a folder "Filled ERRs". Open this folder to view your completed ERR packages. You can then view and print the generated documents from Microsoft Edge, Google Chrome, or Adobe Acrobat. 
+8. This will generate a folder "Filled ERRs". Open this folder to view your completed ERR packages. If you filled out the 1b. USAJOBS Announcement sheet, this will also generate a folder "Filled USAJOBS 3330-43-1". You can then view and print the generated documents from Microsoft Edge, Google Chrome, or Adobe Acrobat.
 **Please do not print from Mozilla Firefox as it will not function properly when attempting to print.**
 
-   - ![Filled ERRs Folder](https://i.imgur.com/W0nStGa.png)
+   - ![Filled ERRs Folder](https://i.imgur.com/GxnozH0.png)
 
 9. Review each package THOROUGHLY, especially if your current or desired facility has undergone a change recently such as a change of type, level, etc.
 
