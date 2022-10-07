@@ -563,11 +563,11 @@ class ERRWorker(QObject):
                 else:
                     os.rename(FILLED_PDF_PATH, FINAL_OUTPUT_PATH)
 
-                self.status.emit("Processed: USAJOBS Announcement " + str(data[1].get("Vacancy Number") + " for "
-                                                                          + str(data[1].get("Facility"))))
+                self.status.emit("Processed: USAJOBS Announcement " + str(data[1].get("Vacancy Number")) + " for "
+                                 + str(data[1].get("Facility")))
                 self.progress.emit(100)
-                print("Processed: USAJOBS Announcement " + str(data[1].get("Vacancy Number") + " for "
-                                                                          + str(data[1].get("Facility"))))
+                print("Processed: USAJOBS Announcement " + str(data[1].get("Vacancy Number")) + " for "
+                      + str(data[1].get("Facility")))
 
             _clean_files()
         else:
