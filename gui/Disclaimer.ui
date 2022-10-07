@@ -36,7 +36,7 @@
       <item row="0" column="0" colspan="2">
        <widget class="QLabel" name="label">
         <property name="text">
-         <string>&lt;html&gt;&lt;head/&gt;&lt;body&gt;&lt;p&gt;&lt;span style=&quot; font-weight:700;&quot;&gt;WARNING:&lt;/span&gt; It is the user's responsibility to be aware of any rules, policies, laws, or regulations that govern use of this function. Attaching an image of someone else's signature or reusing a document signed by someone else may be a violation of policy, law, or regulation. Any use of this function is AT THE USER'S OWN RISK. The creator of this program assumes no liability whatsoever arising from the use of this function or any other function provided in this program.&lt;/p&gt;&lt;/body&gt;&lt;/html&gt;</string>
+         <string>&lt;html&gt;&lt;head/&gt;&lt;body&gt;&lt;p&gt;&lt;span style=&quot; font-weight:696;&quot;&gt;WARNING:&lt;/span&gt; Attaching the signed 3330-43-1 page 2 document with a supervisor's signature may be a violation of policy, law, or regulations. This function is not intended for reuse of another person's signature. If you intend to attach a signed 3330-43-1, you are advised to attach a document that ONLY YOU have signed. It is the user's responsibility to use this function responsibly and be aware of any rules, policies, laws, or regulations that govern it. Use of this function, therefore, is entirely AT THE USERS OWN RISK.&lt;/p&gt;&lt;/body&gt;&lt;/html&gt;</string>
         </property>
         <property name="alignment">
          <set>Qt::AlignLeading|Qt::AlignLeft|Qt::AlignTop</set>

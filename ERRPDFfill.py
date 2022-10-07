@@ -25,7 +25,8 @@ WIDGET_SUBTYPE_KEY = '/Widget'
 # GLOBAL CONSTANTS
 OUTPUT_DIRECTORY = 'Filled ERRs'
 RESOURCE_DIRECTORY = 'resources'
-EMPTY_PDF_PATH = RESOURCE_DIRECTORY + '\\CoverLetter+3330-42+3330-43combined.pdf'
+EMPTY_COVER_42_43_PDF_PATH = RESOURCE_DIRECTORY + '\\CoverLetter+3330-42+3330-43combined.pdf'
+EMPTY_43_PDF_PATH = RESOURCE_DIRECTORY + '\\3330-43-1.pdf'
 DATA_SPREADSHEET_PATH = '1. Personal Information.xlsx'
 
 PERFORMANCE_PATH_ = 'performance.pdf'
@@ -285,7 +286,7 @@ def pypdf_set_need_appearances_writer(writer: PdfFileWriter):
 # Creates "watermark" PDFs that are empty PDFs with signatures drawn that will later be overlaid on filled pages
 # This function is run early as it is only necessary to run once per program execution, not once per package
 # CREDIT: https://stackoverflow.com/questions/2925484/place-image-over-pdf
-def _generate_signature_watermark_files(signature_path, sup_signature_path):
+def _generate_signature_watermark_files(signature_path):
     if signature_path != '':
         canvas_cover = canvas.Canvas(WATERMARK_FILE_COVER_LETTER, pagesize=reportlab.lib.pagesizes.letter)
         canvas_cover.drawImage(signature_path, 72, 330, height=36, preserveAspectRatio=True, anchor='sw')
@@ -297,15 +298,6 @@ def _generate_signature_watermark_files(signature_path, sup_signature_path):
 
         canvas_43 = canvas.Canvas(WATERMARK_FILE_43, pagesize=reportlab.lib.pagesizes.letter)
         canvas_43.drawImage(signature_path, 88, 92, width=210, height=24, preserveAspectRatio=True, anchor='sw')
-        if sup_signature_path != '':
-            canvas_43.drawImage(sup_signature_path, 378, 92, width=210, height=24, preserveAspectRatio=True,
-                                anchor='sw')
-        canvas_43.save()
-
-    elif sup_signature_path != '':
-        canvas_43 = canvas.Canvas(WATERMARK_FILE_43, pagesize=reportlab.lib.pagesizes.letter)
-        canvas_43.drawImage(sup_signature_path, 378, 92, width=210, height=24, preserveAspectRatio=True,
-                            anchor='sw')
         canvas_43.save()
 
 
@@ -391,7 +383,7 @@ class ERRWorker(QObject):
     progress = pyqtSignal(int)
     status = pyqtSignal(str)
 
-    def __init__(self, resume_path, performance_path, signed_43_1_path, signature_img_path, sup_signature_img_path):
+    def __init__(self, resume_path, performance_path, signed_43_1_path, signature_img_path):
 
         super(ERRWorker, self).__init__()
 
@@ -425,7 +417,7 @@ class ERRWorker(QObject):
             self.signed_43_1_path = SIGNED_3330_43_1_PATH_
         if signed_43_1_path != '' and (os.path.isdir(signed_43_1_path) or not os.path.isfile(signed_43_1_path)):
             self.init_errors.append("ERROR: The path specified for Signed 3330-43-1 page 2: " + signed_43_1_path
-                                        + " is invalid and will not be used. Reverting to default...")
+                                    + " is invalid and will not be used. Reverting to default...")
         else:
             self.signed_43_1_path = signed_43_1_path
 
@@ -442,22 +434,6 @@ class ERRWorker(QObject):
         else:
             self.signature_img_path = signature_img_path
 
-        if sup_signature_img_path == '' or os.path.isdir(sup_signature_img_path) \
-                or not os.path.isfile(sup_signature_img_path):
-            if os.path.isfile('supsignature.png'):
-                self.sup_signature_img_path = 'supsignature.png'
-            elif os.path.isfile('supsignature.jpg'):
-                self.sup_signature_img_path = 'supsignature.jpg'
-            else:
-                self.sup_signature_img_path = ''
-        if sup_signature_img_path != '' and \
-                (os.path.isdir(sup_signature_img_path) or not os.path.isfile(sup_signature_img_path)):
-            self.init_errors.append("ERROR: The path specified for Supervisor's Signature Image: " +
-                                    sup_signature_img_path +
-                                    " is invalid and will not be used. Reverting to default...")
-        else:
-            self.sup_signature_img_path = sup_signature_img_path
-
     def print_init_errors(self):
         for error_string in self.init_errors:
             self.status.emit(error_string)
@@ -466,9 +442,9 @@ class ERRWorker(QObject):
     # This was originally a static function but now part of ERRWorker class
     # This was moved to allow the function to emit a pyqtSignal(str) that can be received by MainWindow.print_status
     # slot and output to a console in the UI.
-    def generate_err(self, resume_path, performance_path, signed_43_1_path, signature_img_path, sup_signature_img_path):
+    def generate_err(self, resume_path, performance_path, signed_43_1_path, signature_img_path):
 
-        _generate_signature_watermark_files(signature_img_path, sup_signature_img_path)
+        _generate_signature_watermark_files(signature_img_path)
 
         if os.path.isfile(DATA_SPREADSHEET_PATH):
             data_xls = pd.ExcelFile(DATA_SPREADSHEET_PATH, engine="openpyxl")
@@ -484,6 +460,8 @@ class ERRWorker(QObject):
             for i in range(1, 21):
                 if data_backend[1].get("Facility" + str(i)):
                     num_err = i
+            if data_backend[1].get("USAJOBS"):
+                num_err += 1
 
             if num_err == 0:
                 sys.stderr.write(
@@ -501,7 +479,7 @@ class ERRWorker(QObject):
                     SIGNED_PDF_PATH = OUTPUT_DIRECTORY + "\\" + str(data[1].get("Facility")) + "(signed).pdf"
                     FINAL_OUTPUT_PATH = OUTPUT_DIRECTORY + "\\" + str(data[1].get("Facility")) + ".pdf"
 
-                    single_form_fill(EMPTY_PDF_PATH, data[1], FILLED_PDF_PATH)
+                    single_form_fill(EMPTY_COVER_42_43_PDF_PATH, data[1], FILLED_PDF_PATH)
                     _insert_signatures(FILLED_PDF_PATH, SIGNED_PDF_PATH, signed_43_1_path)
 
                     # concat_paths represents the structure of an ERR package
@@ -539,6 +517,57 @@ class ERRWorker(QObject):
                     self.progress.emit(int(100 * (i / num_err)))
                     print("Processed: " + str(data[1].get("Facility")))
 
+            if data_backend[1].get("USAJOBS"):
+                data = data_xls.parse("PDFKeysUSAJOBS", header=None, index_col=0).fillna('').to_dict()
+
+                # Each path represents a "step" in the generation, package will be filled first, then finalized
+                FILLED_PDF_PATH = "Filled USAJOBS 3330-43-1\\" + str(data[1].get("Facility")) + "(temp).pdf"
+                FINAL_OUTPUT_PATH = "Filled USAJOBS 3330-43-1\\" + str(data[1].get("Facility")) + ".pdf"
+                if not os.path.isdir("Filled USAJOBS 3330-43-1"):
+                    os.mkdir("Filled USAJOBS 3330-43-1")
+
+                single_form_fill(EMPTY_43_PDF_PATH, data[1], FILLED_PDF_PATH)
+
+                # Reuses code from _insert_signatures function above
+                # Requires abstraction
+                watermark_43 = signed_3330_43_1_file = None
+                if os.path.isfile(signed_43_1_path) or os.path.isfile(WATERMARK_FILE_43):
+                    output_file = PdfFileWriter()
+                    pypdf_set_need_appearances_writer(output_file)
+                    input_file = PdfFileReader(open(FILLED_PDF_PATH, "rb"))
+
+                    output_file.addPage(input_file.getPage(0))
+
+                    if os.path.isfile(signed_43_1_path):
+                        signed_3330_43_1_file = PdfFileReader(open(signed_43_1_path, "rb"))
+                        output_file.addPage(signed_3330_43_1_file.getPage(0))
+                    elif os.path.isfile(WATERMARK_FILE_43):
+                        watermark_43 = PdfFileReader(open(WATERMARK_FILE_43, "rb"))
+
+                        page_43 = input_file.getPage(1)
+                        page_43.mergePage(watermark_43.getPage(0))
+                        output_file.addPage(page_43)
+
+                    with open(FINAL_OUTPUT_PATH, "wb") as outputStream:
+                        output_file.write(outputStream)
+
+                    input_file.stream.close()
+                    if signed_3330_43_1_file is not None:
+                        signed_3330_43_1_file.stream.close()
+                    elif watermark_43 is not None:
+                        watermark_43.stream.close()
+
+                if os.path.isfile(FINAL_OUTPUT_PATH):
+                    os.remove(FILLED_PDF_PATH)
+                else:
+                    os.rename(FILLED_PDF_PATH, FINAL_OUTPUT_PATH)
+
+                self.status.emit("Processed: USAJOBS Announcement " + str(data[1].get("Vacancy Number") + " for "
+                                                                          + str(data[1].get("Facility"))))
+                self.progress.emit(100)
+                print("Processed: USAJOBS Announcement " + str(data[1].get("Vacancy Number") + " for "
+                                                                          + str(data[1].get("Facility"))))
+
             _clean_files()
         else:
             sys.stderr.write("ERROR: 1. Personal Information.xlsx not found! Aborting!\n")
@@ -550,8 +579,7 @@ class ERRWorker(QObject):
         # complete, log all errors, then output them just prior to runtime
         self.print_init_errors()
 
-        self.generate_err(self.resume_path, self.performance_path, self.signed_43_1_path, self.signature_img_path,
-                          self.sup_signature_img_path)
+        self.generate_err(self.resume_path, self.performance_path, self.signed_43_1_path, self.signature_img_path)
         self.finished.emit()
 
 
@@ -567,7 +595,6 @@ class MainWindow(QMainWindow, Ui_MainWindow):
         self.resume_browse.clicked.connect(self.open_resume_pdf)
         self.performance_browse.clicked.connect(self.open_performance_pdf)
         self.signature_browse.clicked.connect(self.open_signature_image)
-        self.sup_signature_browse.clicked.connect(self.open_sup_signature_image)
         self.signed_43_1_browse.clicked.connect(self.open_43_1_pdf)
 
     def open_performance_pdf(self):
@@ -602,23 +629,6 @@ class MainWindow(QMainWindow, Ui_MainWindow):
 
         self.signature_line_edit.setText(signature_path[0])
 
-    def open_sup_signature_image(self):
-        # We declare the variable here as None because the user may choose to not accept the terms in DisclaimerDialog.
-        # This results in a "referencing local variable before declaration" error when we try to setText at the end
-        sup_signature_path = None
-        if not self.terms_accepted:
-            disclaimer_dialog = DisclaimerDialog()
-            disclaimer_dialog.buttonBox.accepted.connect(self.set_terms_accepted_true)
-            disclaimer_dialog.buttonBox.rejected.connect(self.set_terms_accepted_false)
-            disclaimer_dialog.exec()
-
-        if self.terms_accepted:
-            sup_signature_path = QFileDialog.getOpenFileName(self, "Select Supervisor's Signature Image", "",
-                                                             "Image Files (*.png *.jpg *.jpeg *.gif);;All Files (*)")
-
-        if sup_signature_path is not None:
-            self.sup_signature_line_edit.setText(sup_signature_path[0])
-
     def report_progress(self, progress):
         self.progress_bar.setValue(progress)
 
@@ -634,8 +644,7 @@ class MainWindow(QMainWindow, Ui_MainWindow):
     def run_err_generator(self):
         self.thread = QThread()
         self.worker = ERRWorker(self.resume_line_edit.text(), self.performance_line_edit.text(),
-                                self.signed_43_1_line_edit.text(), self.signature_line_edit.text(),
-                                self.sup_signature_line_edit.text())
+                                self.signed_43_1_line_edit.text(), self.signature_line_edit.text())
 
         self.worker.moveToThread(self.thread)
 

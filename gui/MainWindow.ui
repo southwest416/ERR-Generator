@@ -159,7 +159,7 @@
            <item>
             <widget class="QLabel" name="label">
              <property name="text">
-              <string>&lt;html&gt;&lt;head/&gt;&lt;body&gt;&lt;p&gt;Welcome to the ERR Generator. This program will allow you to generate a complete cover letter, 3330-42, and 3330-43-1 for up to 20 facilities at once. To start, make sure you have already completely filled out the &amp;quot;1. Personal Information.xlsx&amp;quot; sheet that comes with this program.&lt;/p&gt;&lt;p&gt;Next, using the tabs at the top, attach a performance plan &amp;amp; resume, then attach signature images and/or a signed 3330-43-1 page 2. These steps are optional, but recommended.&lt;/p&gt;&lt;p&gt;Finally, once you have selected all the files you would like to attach, use the &amp;quot;Run&amp;quot; button below to generate your ERR packages. &lt;/p&gt;&lt;/body&gt;&lt;/html&gt;</string>
+              <string>&lt;html&gt;&lt;head/&gt;&lt;body&gt;&lt;p&gt;Welcome to the ERR Generator. This program will allow you to generate a complete cover letter, 3330-42, and 3330-43-1 for up to 20 facilities at once. To start, make sure you have already completely filled out the &amp;quot;1. Personal Information.xlsx&amp;quot; sheet that comes with this program.&lt;/p&gt;&lt;p&gt;Next, using the tabs at the top, attach a performance plan &amp;amp; resume, then attach a signature image and/or a signed 3330-43-1 page 2. These steps are optional, but recommended.&lt;/p&gt;&lt;p&gt;Finally, once you have selected all the files you would like to attach, use the &amp;quot;Run&amp;quot; button below to generate your ERR packages. &lt;/p&gt;&lt;/body&gt;&lt;/html&gt;</string>
              </property>
              <property name="textFormat">
               <enum>Qt::RichText</enum>
@@ -295,7 +295,7 @@
               </sizepolicy>
              </property>
              <property name="text">
-              <string>&lt;html&gt;&lt;head/&gt;&lt;body&gt;&lt;p&gt;Attach images of your signature and a supervisor's signature, and/or attach a signed 3330-43-1 page 2 here. If you attach a signed 3330-43-1 page 2, you do not need to attach a supervisor's signature as well, as this is the only page in the document where a supervisor must sign. A signature image is still recommend in order to sign the cover letter and 3330-42.&lt;/p&gt;&lt;p&gt;Additionally, if you attach a signed 3330-43-1 page 2, you must ensure the page is filled out completely and accurately, as the generator will not attempt to update any fields on this page once overwritten.&lt;/p&gt;&lt;/body&gt;&lt;/html&gt;</string>
+              <string>&lt;html&gt;&lt;head/&gt;&lt;body&gt;&lt;p&gt;Attach images of your signature and/or attach a signed 3330-43-1 page 2 here. If you choose to attach the signature page of the 3330-43-1, it is still recommended to attach your signature image so that the cover letter and 3330-42 will also be signed.&lt;/p&gt;&lt;p&gt;Additionally, if you attach a signed 3330-43-1 page 2, you must ensure the page is filled out completely and accurately, as the generator will not attempt to update any fields on this page once overwritten. You are advised to NOT attach a 3330-43-1 signature page that has been signed by a rating official (supervisor or otherwise), as reusing a document with someone else's signature may be a violation of policy, law, or regulation.&lt;/p&gt;&lt;/body&gt;&lt;/html&gt;</string>
              </property>
              <property name="wordWrap">
               <bool>true</bool>
@@ -347,86 +347,29 @@
          </widget>
         </item>
         <item>
-         <widget class="QLabel" name="label_6">
-          <property name="text">
-           <string>-And-</string>
+         <widget class="QGroupBox" name="groupBox_8">
+          <property name="sizePolicy">
+           <sizepolicy hsizetype="Preferred" vsizetype="Maximum">
+            <horstretch>0</horstretch>
+            <verstretch>0</verstretch>
+           </sizepolicy>
           </property>
-          <property name="alignment">
-           <set>Qt::AlignCenter</set>
-          </property>
-         </widget>
-        </item>
-        <item>
-         <widget class="QGroupBox" name="groupBox_9">
           <property name="title">
-           <string/>
+           <string>Signed 3330-43-1 page 2 PDF</string>
           </property>
-          <property name="alignment">
-           <set>Qt::AlignCenter</set>
-          </property>
-          <layout class="QVBoxLayout" name="verticalLayout_7">
+          <layout class="QHBoxLayout" name="horizontalLayout_5">
            <item>
-            <widget class="QGroupBox" name="groupBox_8">
-             <property name="sizePolicy">
-              <sizepolicy hsizetype="Preferred" vsizetype="Maximum">
-               <horstretch>0</horstretch>
-               <verstretch>0</verstretch>
-              </sizepolicy>
+            <widget class="QLineEdit" name="signed_43_1_line_edit">
+             <property name="readOnly">
+              <bool>false</bool>
              </property>
-             <property name="title">
-              <string>Signed 3330-43-1 page 2 PDF</string>
-             </property>
-             <layout class="QHBoxLayout" name="horizontalLayout_5">
-              <item>
-               <widget class="QLineEdit" name="signed_43_1_line_edit">
-                <property name="readOnly">
-                 <bool>false</bool>
-                </property>
-               </widget>
-              </item>
-              <item>
-               <widget class="QPushButton" name="signed_43_1_browse">
-                <property name="text">
-                 <string>Browse</string>
-                </property>
-               </widget>
-              </item>
-             </layout>
             </widget>
            </item>
            <item>
-            <widget class="QLabel" name="label_5">
+            <widget class="QPushButton" name="signed_43_1_browse">
              <property name="text">
-              <string>-Or-</string>
+              <string>Browse</string>
              </property>
-             <property name="alignment">
-              <set>Qt::AlignCenter</set>
-             </property>
-            </widget>
-           </item>
-           <item>
-            <widget class="QGroupBox" name="groupBox_6">
-             <property name="sizePolicy">
-              <sizepolicy hsizetype="Preferred" vsizetype="Maximum">
-               <horstretch>0</horstretch>
-               <verstretch>0</verstretch>
-              </sizepolicy>
-             </property>
-             <property name="title">
-              <string>Supervisor's Signature Image</string>
-             </property>
-             <layout class="QHBoxLayout" name="horizontalLayout_3">
-              <item>
-               <widget class="QLineEdit" name="sup_signature_line_edit"/>
-              </item>
-              <item>
-               <widget class="QPushButton" name="sup_signature_browse">
-                <property name="text">
-                 <string>Browse</string>
-                </property>
-               </widget>
-              </item>
-             </layout>
             </widget>
            </item>
           </layout>
@@ -451,8 +394,6 @@
   <tabstop>signature_browse</tabstop>
   <tabstop>signed_43_1_line_edit</tabstop>
   <tabstop>signed_43_1_browse</tabstop>
-  <tabstop>sup_signature_line_edit</tabstop>
-  <tabstop>sup_signature_browse</tabstop>
  </tabstops>
  <resources/>
  <connections/>
