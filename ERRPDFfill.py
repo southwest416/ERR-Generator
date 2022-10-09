@@ -10,6 +10,7 @@ from PyPDF2 import PdfFileWriter, PdfFileReader
 from PyPDF2.generic import BooleanObject, NameObject, IndirectObject
 from gui.MainWindow import Ui_MainWindow
 from gui.Disclaimer import Ui_DisclaimerDialog
+from collections import defaultdict
 
 from PyQt6.QtGui import *
 from PyQt6.QtCore import *
@@ -285,10 +286,11 @@ def pypdf_set_need_appearances_writer(writer: PdfFileWriter):
 
 
 # Creates "watermark" PDFs that are empty PDFs with signatures drawn that will later be overlaid on filled pages
-# This function is run early as it is only necessary to run once per program execution, not once per package
 # CREDIT: https://stackoverflow.com/questions/2925484/place-image-over-pdf
 def _generate_signature_watermark_files(signature_path):
-    if signature_path != '':
+
+    # If one watermark file exists, all three must exist, so we check if cover letter watermark exists
+    if not os.path.isfile(WATERMARK_FILE_COVER_LETTER):
         canvas_cover = canvas.Canvas(WATERMARK_FILE_COVER_LETTER, pagesize=reportlab.lib.pagesizes.letter)
         canvas_cover.drawImage(signature_path, 72, 330, height=36, preserveAspectRatio=True, anchor='sw')
         canvas_cover.save()
@@ -302,72 +304,148 @@ def _generate_signature_watermark_files(signature_path):
         canvas_43.save()
 
 
-# Overlays signature watermark files onto each page or inserts signed page in place of generated page as necessary
-# CREDIT: https://stackoverflow.com/questions/2925484/place-image-over-pdf
-def _insert_signatures(form_path, output_path, signed_3330_43_1_path):
-    watermark_cover_letter_exists = os.path.isfile(WATERMARK_FILE_COVER_LETTER)
-    watermark_42_exists = os.path.isfile(WATERMARK_FILE_42)
-    watermark_43_exists = os.path.isfile(WATERMARK_FILE_43)
-    signed_3330_43_1_exists = os.path.isfile(signed_3330_43_1_path)
+# Takes a filled out ERR package and overlays/attaches signatures and appends resume & performance plan
+# Returns nothing, all operations are conducted on the files specified in form_path and output_path
+def sign_and_append_documents(form_path, output_path, signature_img_path=None, signed_3330_43_1_path=None,
+                              resume_path=None, performance_path=None, usajobs_announcement=False):
 
-    if watermark_cover_letter_exists or watermark_42_exists or watermark_43_exists or signed_3330_43_1_exists:
-        output_file = PdfFileWriter()
-        pypdf_set_need_appearances_writer(output_file)
-        input_file = PdfFileReader(open(form_path, "rb"))
+    output_file_writer = PdfFileWriter()
+    pypdf_set_need_appearances_writer(output_file_writer)
+    input_file_reader = PdfFileReader(open(form_path, "rb"))
 
-        # Since we don't know which files/image combos the user may use,
-        # we declare the PdfFileReader variables here so we can close any used streams at the end of the function
-        watermark_cover = watermark_42 = watermark_43 = signed_3330_43_1_file = None
+    if os.path.isfile(signature_img_path):
+        _generate_signature_watermark_files(signature_img_path)
 
-        if watermark_cover_letter_exists:
-            watermark_cover = PdfFileReader(open(WATERMARK_FILE_COVER_LETTER, "rb"))
+    if usajobs_announcement:
 
-            cover_page = input_file.getPage(0)
-            cover_page.mergePage(watermark_cover.getPage(0))
-            output_file.addPage(cover_page)
+        # We prefer a signed 3330-43-1 page 2, so we use that first if it exists
+        if os.path.isfile(signed_3330_43_1_path):
+            output_file_writer.addPage(input_file_reader.getPage(0))
+
+            signed_3330_43_1_reader = PdfFileReader(open(signed_3330_43_1_path, "rb"))
+            output_file_writer.addPage(signed_3330_43_1_reader.getPage(0))
+
+            with open(output_path, "wb") as output_stream:
+                output_file_writer.write(output_stream)
+
+            input_file_reader.stream.close()
+            signed_3330_43_1_reader.stream.close()
+
+            os.remove(form_path)
+
+        # If the signed 3330-43-1 page 2 is not present, we fall back to a signature image
+        elif os.path.isfile(signature_img_path):
+            output_file_writer.addPage(input_file_reader.getPage(0))
+
+            watermark_43_reader = PdfFileReader(open(WATERMARK_FILE_43, "rb"))
+            page_43 = input_file_reader.getPage(1)
+            page_43.mergePage(watermark_43_reader.getPage(0))
+            output_file_writer.addPage(page_43)
+
+            with open(output_path, "wb") as output_stream:
+                output_file_writer.write(output_stream)
+
+            input_file_reader.stream.close()
+            watermark_43_reader.stream.close()
+
+            os.remove(form_path)
+
         else:
-            output_file.addPage(input_file.getPage(0))
+            input_file_reader.stream.close()
 
-        if watermark_42_exists:
-            watermark_42 = PdfFileReader(open(WATERMARK_FILE_42, "rb"))
+            if os.path.isfile(output_path):
+                os.remove(output_path)
+            os.rename(form_path, output_path)
 
-            page_42 = input_file.getPage(1)
-            page_42.mergePage(watermark_42.getPage(0))
-            output_file.addPage(page_42)
+    else:
+        temp_path = form_path[0:-4] + " (signed).pdf"
+
+        # Even if a signed 3330-43-1 is present, we still can sign other pages with a signature image
+        # So we start with the signature image here instead of the 3330-43-1
+        if os.path.isfile(signature_img_path):
+
+            # Declared early so we can close the streams later if necessary
+            watermark_43_reader = None
+            signed_3330_43_1_reader = None
+
+            watermark_cover_letter_reader = PdfFileReader(open(WATERMARK_FILE_COVER_LETTER, "rb"))
+            page_cover_letter = input_file_reader.getPage(0)
+            page_cover_letter.mergePage(watermark_cover_letter_reader.getPage(0))
+            output_file_writer.addPage(page_cover_letter)
+
+            watermark_42_reader = PdfFileReader(open(WATERMARK_FILE_42, "rb"))
+            page_42 = input_file_reader.getPage(1)
+            page_42.mergePage(watermark_42_reader.getPage(0))
+            output_file_writer.addPage(page_42)
+
+            # Page 2 and 3 are not signable pages, so we add them here, as is
+            output_file_writer.addPage(input_file_reader.getPage(2))
+            output_file_writer.addPage(input_file_reader.getPage(3))
+
+            # Prefer a signed 3330-43-1 page 2, fall back to signature image since we know it exists
+            if os.path.isfile(signed_3330_43_1_path):
+                signed_3330_43_1_reader = PdfFileReader(open(signed_3330_43_1_path, "rb"))
+                output_file_writer.addPage(signed_3330_43_1_reader.getPage(0))
+            else:
+                watermark_43_reader = PdfFileReader(open(WATERMARK_FILE_43, "rb"))
+                page_43 = input_file_reader.getPage(4)
+                page_43.mergePage(watermark_43_reader.getPage(0))
+                output_file_writer.addPage(page_43)
+
+            with open(temp_path, "wb") as output_stream:
+                output_file_writer.write(output_stream)
+
+            input_file_reader.stream.close()
+            watermark_cover_letter_reader.stream.close()
+            watermark_42_reader.stream.close()
+            if signed_3330_43_1_reader is not None:
+                signed_3330_43_1_reader.stream.close()
+            if watermark_43_reader is not None:
+                watermark_43_reader.stream.close()
+
+        # If no signature image is present, we may still have a 3330-43-1 page 2
+        elif os.path.isfile(signed_3330_43_1_path):
+            for i in range(4):
+                output_file_writer.addPage(input_file_reader.getPage(i))
+
+            signed_3330_43_1_reader = PdfFileReader(open(signed_3330_43_1_path, "rb"))
+            output_file_writer.addPage(signed_3330_43_1_reader.getPage(0))
+
+            with open(temp_path, "wb") as output_stream:
+                output_file_writer.write(output_stream)
+
+            input_file_reader.stream.close()
+            signed_3330_43_1_reader.stream.close()
+
         else:
-            output_file.addPage(input_file.getPage(1))
+            # We stick with temp_path var for simplicity's sake. If we don't have any signatures, we will just use the
+            # original filled ERR package for the next steps
+            temp_path = form_path
+            input_file_reader.stream.close()
 
-        # No signatures on pages 2 and 3
-        output_file.addPage(input_file.getPage(2))
-        output_file.addPage(input_file.getPage(3))
+        file_paths_to_concatenate = [temp_path]
+        if os.path.isfile(resume_path):
+            file_paths_to_concatenate.append(resume_path)
+        if os.path.isfile(performance_path):
+            file_paths_to_concatenate.append(performance_path)
 
-        # We prefer a full signed 3330-43-1 page 2 over a generated one
-        if signed_3330_43_1_exists:
-            signed_3330_43_1_file = PdfFileReader(open(signed_3330_43_1_path, "rb"))
-            output_file.addPage(signed_3330_43_1_file.getPage(0))
-        elif watermark_43_exists:
-            watermark_43 = PdfFileReader(open(WATERMARK_FILE_43, "rb"))
-
-            page_43 = input_file.getPage(4)
-            page_43.mergePage(watermark_43.getPage(0))
-            output_file.addPage(page_43)
+        if file_paths_to_concatenate.__len__() > 1:
+            # This function overwrites any existing file
+            concatenate_pdfrw(file_paths_to_concatenate, output_path)
         else:
-            output_file.addPage(input_file.getPage(4))
+            # os.rename does not overwrite existing files, so we remove the output file if already present
+            if os.path.isfile(output_path):
+                os.remove(output_path)
+            os.rename(temp_path, output_path)
 
-        with open(output_path, "wb") as outputStream:
-            output_file.write(outputStream)
-
-        input_file.stream.close()
-        if watermark_cover is not None:
-            watermark_cover.stream.close()
-        if watermark_42 is not None:
-            watermark_42.stream.close()
-        if watermark_43 is not None:
-            watermark_43.stream.close()
-        if signed_3330_43_1_file is not None:
-            signed_3330_43_1_file.stream.close()
+        # Checking for leftovers
+        if os.path.isfile(form_path):
+            os.remove(form_path)
+        if os.path.isfile(temp_path):
+            os.remove(temp_path)
 
 
+# Removes watermark files prior to exiting the program since they are of no use to the user
 def _clean_files():
     if os.path.isfile(RESOURCE_DIRECTORY + '\\42watermark.pdf'):
         os.remove(RESOURCE_DIRECTORY + '\\42watermark.pdf')
@@ -440,12 +518,10 @@ class ERRWorker(QObject):
             self.status.emit(error_string)
             sys.stderr.write(error_string + "\n")
 
-    # This was originally a static function but now part of ERRWorker class
+    # This was originally a module level function but now part of ERRWorker class
     # This was moved to allow the function to emit a pyqtSignal(str) that can be received by MainWindow.print_status
     # slot and output to a console in the UI.
     def generate_err(self, resume_path, performance_path, signed_43_1_path, signature_img_path):
-
-        _generate_signature_watermark_files(signature_img_path)
 
         if os.path.isfile(DATA_SPREADSHEET_PATH):
             data_xls = pd.ExcelFile(DATA_SPREADSHEET_PATH, engine="openpyxl")
@@ -461,10 +537,13 @@ class ERRWorker(QObject):
             for i in range(1, 21):
                 if data_backend[1].get("Facility" + str(i)):
                     num_err = i
-            if data_backend[1].get("USAJOBS"):
-                num_err += 1
 
-            if num_err == 0:
+            # dict to track completed ERRs to allow for multiple ERRs for different roles to the same facility
+            err_facilities_completed = defaultdict(list)
+
+            # If a USAJOBS application is being generated,
+            # we don't need to warn the user they haven't selected an ERR facility
+            if num_err == 0 and not data_backend[1].get("USAJOBS"):
                 sys.stderr.write(
                     "ERROR: No desired facilities found. Please verify you have filled out 1. Personal Information.xlsx\n")
                 self.status.emit(
@@ -475,93 +554,44 @@ class ERRWorker(QObject):
 
                     data = data_xls.parse("PDFKeys" + str(i), header=None, index_col=0).fillna('').to_dict()
 
-                    # Each path represents a "step" in the generation, package will be filled first, then signed, then finalized
-                    FILLED_PDF_PATH = OUTPUT_DIRECTORY + "\\" + str(data[1].get("Facility")) + "(temp).pdf"
-                    SIGNED_PDF_PATH = OUTPUT_DIRECTORY + "\\" + str(data[1].get("Facility")) + "(signed).pdf"
-                    FINAL_OUTPUT_PATH = OUTPUT_DIRECTORY + "\\" + str(data[1].get("Facility")) + ".pdf"
+                    current_facility_id = str(data[1].get("Facility"))
+                    filled_pdf_path = OUTPUT_DIRECTORY + "\\" + current_facility_id + "(temp).pdf"
+                    final_output_path = OUTPUT_DIRECTORY + "\\" + current_facility_id + ".pdf"
 
-                    single_form_fill(EMPTY_COVER_42_43_PDF_PATH, data[1], FILLED_PDF_PATH)
-                    _insert_signatures(FILLED_PDF_PATH, SIGNED_PDF_PATH, signed_43_1_path)
+                    # Rename duplicate ERRs to follow [location] - [role].pdf structure (eg. "DFW - CPC.pdf")
+                    # This structure allows us to generate multiple ERRs to one facility for different roles
+                    # While maintaining the ability to overwrite old ERRs and showing the user which ERR is which
+                    if current_facility_id in err_facilities_completed:
+                        if os.path.isfile(final_output_path):
+                            renamed_file = final_output_path[0:(len(OUTPUT_DIRECTORY) + 4)] + " - " +\
+                                      str(err_facilities_completed[current_facility_id][0]) + ".pdf"
+                            if os.path.isfile(renamed_file):
+                                os.remove(renamed_file)
+                            os.rename(final_output_path, renamed_file)
 
-                    # concat_paths represents the structure of an ERR package
-                    # We start with the filled/signed portion including Cover letter, 3330-42, and 3330-43-1
-                    # Then we attach a resume, then a performance plan, in that order
-                    if os.path.isfile(SIGNED_PDF_PATH):
-                        concat_paths = [SIGNED_PDF_PATH]
-                    else:
-                        concat_paths = [FILLED_PDF_PATH]
+                        final_output_path = OUTPUT_DIRECTORY + "\\" + current_facility_id + " - " + \
+                            str(data[1].get("DesiredRole")).upper() + ".pdf"
 
-                    if os.path.isfile(resume_path):
-                        concat_paths.append(resume_path)
-                    if os.path.isfile(performance_path):
-                        concat_paths.append(performance_path)
+                    single_form_fill(EMPTY_COVER_42_43_PDF_PATH, data[1], filled_pdf_path)
+                    sign_and_append_documents(filled_pdf_path, final_output_path, signature_img_path,
+                                              signed_43_1_path, resume_path, performance_path)
 
-                    # Here we concatenate everything in concat_paths into a single file
-                    # Since we previously used temporary placeholder files (temp) and (signed).pdf, we remove them if present
-                    if concat_paths.__len__() > 1:
-                        concatenate_pdfrw(concat_paths, FINAL_OUTPUT_PATH)
-                        if os.path.isfile(FILLED_PDF_PATH):
-                            os.remove(FILLED_PDF_PATH)
-                        if os.path.isfile(SIGNED_PDF_PATH):
-                            os.remove(SIGNED_PDF_PATH)
-                    else:
-                        if os.path.isfile(FINAL_OUTPUT_PATH):
-                            os.remove(FINAL_OUTPUT_PATH)
-                        if os.path.isfile(SIGNED_PDF_PATH):
-                            os.rename(SIGNED_PDF_PATH, FINAL_OUTPUT_PATH)
-                            if os.path.isfile(FILLED_PDF_PATH):
-                                os.remove(FILLED_PDF_PATH)
-                        else:
-                            os.rename(FILLED_PDF_PATH, FINAL_OUTPUT_PATH)
-
-                    self.status.emit("Processed: " + str(data[1].get("Facility")))
+                    err_facilities_completed[current_facility_id].append(str(data[1].get("DesiredRole")).upper())
+                    self.status.emit("Processed: " + current_facility_id)
                     self.progress.emit(int(100 * (i / num_err)))
-                    print("Processed: " + str(data[1].get("Facility")))
+                    print("Processed: " + current_facility_id)
 
             if data_backend[1].get("USAJOBS"):
                 data = data_xls.parse("PDFKeysUSAJOBS", header=None, index_col=0).fillna('').to_dict()
 
-                # Each path represents a "step" in the generation, package will be filled first, then finalized
-                FILLED_PDF_PATH = "Filled USAJOBS 3330-43-1\\" + str(data[1].get("Facility")) + "(temp).pdf"
-                FINAL_OUTPUT_PATH = "Filled USAJOBS 3330-43-1\\" + str(data[1].get("Facility")) + ".pdf"
+                filled_pdf_path = "Filled USAJOBS 3330-43-1\\" + str(data[1].get("Facility")) + "(temp).pdf"
+                final_output_path = "Filled USAJOBS 3330-43-1\\" + str(data[1].get("Facility")) + ".pdf"
                 if not os.path.isdir("Filled USAJOBS 3330-43-1"):
                     os.mkdir("Filled USAJOBS 3330-43-1")
 
-                single_form_fill(EMPTY_43_PDF_PATH, data[1], FILLED_PDF_PATH)
-
-                # Reuses code from _insert_signatures function above
-                # Requires abstraction
-                watermark_43 = signed_3330_43_1_file = None
-                if os.path.isfile(signed_43_1_path) or os.path.isfile(WATERMARK_FILE_43):
-                    output_file = PdfFileWriter()
-                    pypdf_set_need_appearances_writer(output_file)
-                    input_file = PdfFileReader(open(FILLED_PDF_PATH, "rb"))
-
-                    output_file.addPage(input_file.getPage(0))
-
-                    if os.path.isfile(signed_43_1_path):
-                        signed_3330_43_1_file = PdfFileReader(open(signed_43_1_path, "rb"))
-                        output_file.addPage(signed_3330_43_1_file.getPage(0))
-                    elif os.path.isfile(WATERMARK_FILE_43):
-                        watermark_43 = PdfFileReader(open(WATERMARK_FILE_43, "rb"))
-
-                        page_43 = input_file.getPage(1)
-                        page_43.mergePage(watermark_43.getPage(0))
-                        output_file.addPage(page_43)
-
-                    with open(FINAL_OUTPUT_PATH, "wb") as outputStream:
-                        output_file.write(outputStream)
-
-                    input_file.stream.close()
-                    if signed_3330_43_1_file is not None:
-                        signed_3330_43_1_file.stream.close()
-                    elif watermark_43 is not None:
-                        watermark_43.stream.close()
-
-                if os.path.isfile(FINAL_OUTPUT_PATH):
-                    os.remove(FILLED_PDF_PATH)
-                else:
-                    os.rename(FILLED_PDF_PATH, FINAL_OUTPUT_PATH)
+                single_form_fill(EMPTY_43_PDF_PATH, data[1], filled_pdf_path)
+                sign_and_append_documents(filled_pdf_path, final_output_path, signature_img_path, signed_43_1_path,
+                                          resume_path, performance_path, True)
 
                 self.status.emit("Processed: USAJOBS Announcement " + str(data[1].get("Vacancy Number")) + " for "
                                  + str(data[1].get("Facility")))
@@ -585,6 +615,8 @@ class ERRWorker(QObject):
         except Exception as e:
             self.status.emit(str(e))
             traceback.print_exc()
+
+        _clean_files()
 
         self.finished.emit()
 
