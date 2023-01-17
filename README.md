@@ -5,7 +5,7 @@ This program automatically generates ERR packages including a Cover letter, 3330
 ## Instructions
 1. Download the [most recent release](https://github.com/southwest416/ERR-Generator/releases).
 
-   - ![Download Page](https://i.imgur.com/XmhZHnN.png)
+   - ![Download Page](https://i.imgur.com/vqf8kc7.png)
 
    - ![Warning](https://i.imgur.com/gbqObwk.png)
 
