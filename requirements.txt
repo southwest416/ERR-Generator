@@ -1,0 +1,6 @@
+PyQt6>=6.9.1
+pandas>=2.3.1
+reportlab>=4.4.2
+pypdf>=5.8.0
+pdfrw2>=0.5.0
+openpyxl>=3.2.0b1

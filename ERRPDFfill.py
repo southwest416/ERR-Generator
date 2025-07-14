@@ -6,13 +6,12 @@ import pdfrw
 import pandas as pd
 import reportlab.lib.pagesizes
 from reportlab.pdfgen import canvas
-from PyPDF2 import PdfFileWriter, PdfFileReader
-from PyPDF2.generic import BooleanObject, NameObject, IndirectObject
+from pypdf import PdfWriter, PdfReader
+from pypdf.generic import BooleanObject, NameObject, IndirectObject
 from gui.MainWindow import Ui_MainWindow
 from gui.Disclaimer import Ui_DisclaimerDialog
 from collections import defaultdict
 
-from PyQt6.QtGui import *
 from PyQt6.QtCore import *
 from PyQt6.QtWidgets import *
 
@@ -265,7 +264,7 @@ def concatenate_pdfrw(pdf_files, output_filename):
 
 # PyPDF2 Set Need Appearances Function (Fixes fields not being visible when viewing generated PDF)
 # CREDIT: https://stackoverflow.com/questions/58898542/update-a-fillable-pdf-using-pypdf2
-def pypdf_set_need_appearances_writer(writer: PdfFileWriter):
+def pypdf_set_need_appearances_writer(writer: PdfWriter):
     # See 12.7.2 and 7.7.2 for more info: http://www.adobe.com/content/dam/acom/en/devnet/acrobat/pdfs/PDF32000_2008.pdf
     try:
         catalog = writer._root_object
@@ -309,9 +308,9 @@ def _generate_signature_watermark_files(signature_path):
 def sign_and_append_documents(form_path, output_path, signature_img_path=None, signed_3330_43_1_path=None,
                               resume_path=None, performance_path=None, usajobs_announcement=False):
 
-    output_file_writer = PdfFileWriter()
+    output_file_writer = PdfWriter()
     pypdf_set_need_appearances_writer(output_file_writer)
-    input_file_reader = PdfFileReader(open(form_path, "rb"))
+    input_file_reader = PdfReader(open(form_path, "rb"))
 
     if os.path.isfile(signature_img_path):
         _generate_signature_watermark_files(signature_img_path)
@@ -322,7 +321,7 @@ def sign_and_append_documents(form_path, output_path, signature_img_path=None, s
         if os.path.isfile(signed_3330_43_1_path):
             output_file_writer.addPage(input_file_reader.getPage(0))
 
-            signed_3330_43_1_reader = PdfFileReader(open(signed_3330_43_1_path, "rb"))
+            signed_3330_43_1_reader = PdfReader(open(signed_3330_43_1_path, "rb"))
             output_file_writer.addPage(signed_3330_43_1_reader.getPage(0))
 
             with open(output_path, "wb") as output_stream:
@@ -337,7 +336,7 @@ def sign_and_append_documents(form_path, output_path, signature_img_path=None, s
         elif os.path.isfile(signature_img_path):
             output_file_writer.addPage(input_file_reader.getPage(0))
 
-            watermark_43_reader = PdfFileReader(open(WATERMARK_FILE_43, "rb"))
+            watermark_43_reader = PdfReader(open(WATERMARK_FILE_43, "rb"))
             page_43 = input_file_reader.getPage(1)
             page_43.mergePage(watermark_43_reader.getPage(0))
             output_file_writer.addPage(page_43)
@@ -368,12 +367,12 @@ def sign_and_append_documents(form_path, output_path, signature_img_path=None, s
             watermark_43_reader = None
             signed_3330_43_1_reader = None
 
-            watermark_cover_letter_reader = PdfFileReader(open(WATERMARK_FILE_COVER_LETTER, "rb"))
+            watermark_cover_letter_reader = PdfReader(open(WATERMARK_FILE_COVER_LETTER, "rb"))
             page_cover_letter = input_file_reader.getPage(0)
             page_cover_letter.mergePage(watermark_cover_letter_reader.getPage(0))
             output_file_writer.addPage(page_cover_letter)
 
-            watermark_42_reader = PdfFileReader(open(WATERMARK_FILE_42, "rb"))
+            watermark_42_reader = PdfReader(open(WATERMARK_FILE_42, "rb"))
             page_42 = input_file_reader.getPage(1)
             page_42.mergePage(watermark_42_reader.getPage(0))
             output_file_writer.addPage(page_42)
@@ -384,10 +383,10 @@ def sign_and_append_documents(form_path, output_path, signature_img_path=None, s
 
             # Prefer a signed 3330-43-1 page 2, fall back to signature image since we know it exists
             if os.path.isfile(signed_3330_43_1_path):
-                signed_3330_43_1_reader = PdfFileReader(open(signed_3330_43_1_path, "rb"))
+                signed_3330_43_1_reader = PdfReader(open(signed_3330_43_1_path, "rb"))
                 output_file_writer.addPage(signed_3330_43_1_reader.getPage(0))
             else:
-                watermark_43_reader = PdfFileReader(open(WATERMARK_FILE_43, "rb"))
+                watermark_43_reader = PdfReader(open(WATERMARK_FILE_43, "rb"))
                 page_43 = input_file_reader.getPage(4)
                 page_43.mergePage(watermark_43_reader.getPage(0))
                 output_file_writer.addPage(page_43)
@@ -408,7 +407,7 @@ def sign_and_append_documents(form_path, output_path, signature_img_path=None, s
             for i in range(4):
                 output_file_writer.addPage(input_file_reader.getPage(i))
 
-            signed_3330_43_1_reader = PdfFileReader(open(signed_3330_43_1_path, "rb"))
+            signed_3330_43_1_reader = PdfReader(open(signed_3330_43_1_path, "rb"))
             output_file_writer.addPage(signed_3330_43_1_reader.getPage(0))
 
             with open(temp_path, "wb") as output_stream:
